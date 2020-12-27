@@ -1,36 +1,14 @@
 #!/usr/bin/env python3
 
-import os, sys, socket, csv, time, fnmatch, re, string, json
-
-from config.experiment import options
-hostname = socket.getfqdn()
-options['hostname'] = hostname
-
-print('-'*60)
-print("hostname : {}".format(hostname))
-print('-'*60)
-
-os.environ["KERAS_BACKEND"] = "theano"
-
-if hostname.startswith("pandarus") or hostname.startswith("hamlet") or hostname.startswith("silius"):
-    options['cuda'] = sys.argv[1] # flag using gpu 1 or 2
-    if options['cuda'].startswith('cuda1'):
-        os.environ["THEANO_FLAGS"] = "mode=FAST_RUN,device=cuda1,floatX=float32"
-    elif options['cuda'].startswith('cpu'):
-        os.environ["OMP_NUM_THREADS"]="32"
-        os.environ["THEANO_FLAGS"] = "mode=FAST_RUN,device=cpu,openmp=True,floatX=float32"
-    else:
-        os.environ["THEANO_FLAGS"] = "mode=FAST_RUN,device=cuda0,floatX=float32"
-else:
-    os.environ["THEANO_FLAGS"] = "mode=FAST_RUN,device=cuda0,floatX=float32"
-
-print(os.environ["THEANO_FLAGS"])
-
+import os
+import sys
+socket, csv, time, fnmatch, re, string, json
 import numpy as np
 from nibabel import load as load_nii
 import pandas as pd
 import setproctitle as spt
 from tqdm import tqdm
+import multiprocessing
 
 from models.noel_models_keras import *
 from keras.utils import plot_model
@@ -40,10 +18,23 @@ from keras import backend as K
 from utils.metrics import *
 from utils.base import *
 
+from config.experiment import options
+
+os.environ["KERAS_BACKEND"] = "theano"
+
+options['cuda'] = sys.argv[1] # flag using gpu 1 or 2
+if options['cuda'].startswith('cuda1'):
+    os.environ["THEANO_FLAGS"] = "mode=FAST_RUN,device=cuda1,floatX=float32"
+elif options['cuda'].startswith('cpu'):
+    os.environ["OMP_NUM_THREADS"]=str(multiprocessing.cpu_count() // 2)
+    os.environ["THEANO_FLAGS"] = "mode=FAST_RUN,device=cpu,openmp=True,floatX=float32"
+else:
+    os.environ["THEANO_FLAGS"] = "mode=FAST_RUN,device=cuda0,floatX=float32"
+
+print(os.environ["THEANO_FLAGS"])
+
 K.set_image_dim_ordering('th')
 K.set_image_data_format('channels_first')  # TH dimension ordering in this code
-
-test_site = 'TLE'
 
 options['parallel_gpu'] = False
 modalities = ['T1', 'FLAIR']
@@ -59,13 +50,12 @@ options['mini_batch_size'] = 2048
 
 options['load_checkpoint_1'] = True
 options['load_checkpoint_2'] = True
-# options['continue_training_2'] = True
-# options['initial_epoch_2'] = 69
 
 x_names = options['x_names']
 y_names = ['_lesion.nii.gz', 'lesion_bin.nii.gz']
-# Select an experiment name to store net weights and segmentation masks
-options['experiment'] = 'exp_dropoutMC_' + test_site
+
+# trained model weights based on 148 histologically-verified FCD subjects
+options['experiment'] = 'noel_dropoutMC'
 
 print("experiment: {}".format(options['experiment']))
 spt.setproctitle(options['experiment'])
@@ -75,24 +65,23 @@ options['model_dir'] = '/host/hamlet/local_raid/data/ravnoor/01_Projects/55_Baye
 # --------------------------------------------------
 # initialize the CNN
 # --------------------------------------------------
-options['weight_paths'] = os.path.join(options['model_dir'], options['experiment'])
+options['weight_paths'] = '/app/weights'
 
 model = None  # Clearing the CNN.
-
 model = off_the_shelf_model(options)
 
 print(model[0].summary())
 
-load_weights = os.path.join(options['weight_paths'], options['experiment']+'_model_1.h5')
+load_weights = os.path.join(options['weight_paths'], 'noel_dropoutMC_model_1.h5')
 print("loading DNN1, model[0]: {} exists".format(load_weights)) if os.path.isfile(load_weights) else sys.exit("model[0]: {} doesn't exist".format(load_weights))
 model[0] = load_model(load_weights)
 
-load_weights = os.path.join(options['weight_paths'], options['experiment']+'_model_2.h5')
+load_weights = os.path.join(options['weight_paths'], 'noel_dropoutMC_model_2.h5')
 print("loading DNN1, model[1]: {} exists".format(load_weights)) if os.path.isfile(load_weights) else sys.exit("model[1]: {} doesn't exist".format(load_weights))
 model[1] = load_model(load_weights)
 print('model #2 loaded')
 
-print(model[0].summary())
+print(model[1].summary())
 
 
 # --------------------------------------------------
@@ -106,7 +95,7 @@ print('-----------------------------------')
 test_list = []
 test_data = {}
 # test controls
-tfolder = '/host/hamlet/local_raid/data/ravnoor/sandbox/deepMasks'
+tfolder = '/tmp'
 
 # test_list = re.findall(r'[$0]\d{3}_\d{1}', ''.join(test_list)) # match 0303_1, etc.
 include = ['ESP_001']
