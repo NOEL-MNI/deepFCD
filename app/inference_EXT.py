@@ -15,6 +15,9 @@ from keras.utils import plot_model
 from keras.models import load_model
 from keras import backend as K
 
+import warnings
+warnings.filterwarnings('ignore')
+
 from utils.metrics import *
 from utils.base import *
 
@@ -95,6 +98,7 @@ print('-----------------------------------')
 test_list = []
 test_data = {}
 # test controls
+options['test_folder'] = '/tmp'
 tfolder = '/tmp'
 
 # test_list = re.findall(r'[$0]\d{3}_\d{1}', ''.join(test_list)) # match 0303_1, etc.

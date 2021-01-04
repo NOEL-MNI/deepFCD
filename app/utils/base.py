@@ -9,6 +9,7 @@ import nibabel as nib
 
 import _pickle as cPickle
 import copy
+from shutil import copyfile
 import time
 from keras.models import load_model
 from keras.callbacks import EarlyStopping, CSVLogger, ModelCheckpoint, LambdaCallback
@@ -217,24 +218,19 @@ def test_model(model, test_x_data, options, uncertainty=False):
 
     threshold = options['th_dnn_train_2']
     # organize experiments
-    # exp_folder = os.path.join(options['test_folder'], options['test_scan'], options['experiment'])
-    # if not os.path.exists(exp_folder):
-    #     os.mkdir(exp_folder)
-
     # first network
     options['test_name'] = options['experiment'] + '_prob_0.nii.gz'
     options['test_mean_name'] = options['experiment'] + '_prob_mean_0.nii.gz'
     options['test_var_name'] = options['experiment'] + '_prob_var_0.nii.gz'
 
     t1, _, _ = test_scan(model[0], test_x_data, options, save_nifti=True, uncertainty=True, T=20)
-    # t1 = load_nii(os.path.join(options['pred_folder'], options['test_mean_name'])).get_data()
 
     # second network
     options['test_name'] = options['experiment'] + '_prob_1.nii.gz'
     options['test_mean_name'] = options['experiment'] + '_prob_mean_1.nii.gz'
     options['test_var_name'] = options['experiment'] + '_prob_var_1.nii.gz'
     t2, affine, header = test_scan(model[1], test_x_data, options, save_nifti=True, uncertainty=True, T=50, candidate_mask=t1>threshold)
-    #
+
     # postprocess the output segmentation
     options['test_name'] = options['experiment'] + '_out_CNN.nii.gz'
     out_segmentation, lpred, count = post_processing(t2, options, affine, header, save_nifti=True)
@@ -287,7 +283,7 @@ def test_scan(model, test_x_data, options, transit=None, save_nifti=False, uncer
 
     # get test paths
     _, scan = os.path.split(flair_scans[0])
-    test_folder = os.path.join('/host/silius/local_raid/ravnoor/01_Projects/55_Bayesian_DeepLesion_LoSo/data/predictions', options['experiment'])
+    test_folder = os.path.join(options['test_folder'], options['experiment'])
     # test_folder = '/host/silius/local_raid/ravnoor/01_Projects/06_DeepLesion_LoSo/data/predictions
     if not os.path.exists(test_folder):
         # os.path.join(test_folder, options['experiment'])
@@ -300,25 +296,14 @@ def test_scan(model, test_x_data, options, transit=None, save_nifti=False, uncer
     for batch, centers in load_test_patches(test_x_data, options, options['patch_size'], options['batch_size'], options['min_th'], candidate_mask):
         if uncertainty:
             print("predicting uncertainty")
-            # progbar = Progbar(target=len(batch))
-            # pbar.update(1)
             y_pred, y_pred_var = predict_uncertainty(model, batch, batch_size=batch_size, T=T)
-            # progbar.update(len(batch))
-            # i+=1
         else:
             y_pred = model.predict(np.squeeze(batch), batch_size=batch_size, verbose=1)
-            # pbar.update(1)
-        # pbar.close()
-        # y_pred = model.predict_on_batch(np.squeeze(batch))
-        # model.evaluate(np.squeeze(batch), batch_size=256, verbose=1)
         [x, y, z] = np.stack(centers, axis=1)
         seg_image[x, y, z] = y_pred[:, 1]
         if uncertainty:
             var_image[x, y, z] = y_pred_var[:, 1]
-    # progbar.update(len(test_x_data))
 
-    # if not os.path.exists(options['pred_folder']):
-    #     os.mkdir(options['pred_folder'])
     if save_nifti:
         # out_scan = nib.Nifti1Image(seg_image, np.eye(4))
         out_scan = nib.Nifti1Image(seg_image, affine, header)
@@ -365,7 +350,6 @@ def test_scan(model, test_x_data, options, transit=None, save_nifti=False, uncer
 
 
 def copy_most_recent_model(path, net_model):
-    from shutil import copyfile
     files = os.listdir(path)
     paths = [os.path.join(path, basename) for basename in files if basename.endswith('.h5')]
     latest_model = max(paths, key=os.path.getctime)

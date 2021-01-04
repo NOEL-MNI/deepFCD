@@ -38,10 +38,6 @@ def off_the_shelf(input, options):
         b2 = Dropout(options['dropout_2'])(b2)
     m2 = MaxPooling3D((2, 2, 2), strides=(2, 2, 2))(b2)
 
-    # c3 = Conv3D(base_filters, (3, 3, 3), border_mode='same')(m2)
-    # b3 = BatchNormalization(axis=channel_axis)(c3)
-    # m3 = MaxPooling3D((2, 2, 2), strides=(1, 1, 1))(b3)
-
     return m2
 
 
@@ -52,7 +48,6 @@ def create_off_the_shelf(options):
     :return: Keras Model with 1 input (patch_size) and 1 output
     '''
     nb_classes = options['nb_classes']
-    # channels = len(options['modalities'])
     channels = options['channels']
     shape = options['patch_size']
 
