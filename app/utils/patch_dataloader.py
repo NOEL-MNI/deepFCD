@@ -1,7 +1,7 @@
 # from __future__ import print_function
 import numpy as np
 from scipy import ndimage as nd
-from scipy.ndimage import binary_opening, binary_dilation
+from scipy.ndimage import binary_dilation
 from nibabel import load as load_nii
 import nibabel as nib
 from operator import itemgetter, add
@@ -169,21 +169,21 @@ def load_training_data(train_x_data, train_y_data, options, subcort_masks, model
     Inputs:
 
     train_x_data: a nested dictionary containing training image paths:
-        train_x_data['scan_name']['modality'] = path_to_image_modality
+        train_x_data['scan_name']['modality'] = path_to_image_modalities
 
     train_y_data: a dictionary containing labels
-        train_y_data['scan_name'] = path_to_label
+        train_y_data['scan_name'] = path_to_labels
 
     options: dictionary containing general hyper-parameters:
         - options['min_th'] = min threshold to remove voxels for training
-        - options['size'] = tuple containing patch size, either 2D (p1, p2, 1) or 3D (p1, p2, p3)
+        - options['size'] = tuple containing patch size, 3D (p1, p2, p3)
         - options['randomize_train'] = randomizes data
 
     model: CNN model used to select training candidates
 
     Outputs:
         - X: np.array [num_samples, num_channels, p1, p2, p2]
-        - Y: np.array [num_samples, 1, p1, p2, p2] if fully conv, [num_samples, 1] otherwise
+        - Y: np.array [num_samples, 1]
 
     '''
 
@@ -281,7 +281,7 @@ def load_train_patches(x_data, y_data, selected_voxels, patch_size, subcort_mask
        - x_data: list containing all subject image paths for a single modality
        - y_data: list containing all subject image paths for the labels
        - selected_voxels: list where each element contains the subject binary mask for selected voxels [len(x), len(y), len(z)]
-       - tuple containing patch size, either 2D (p1, p2, 1) or 3D (p1, p2, p3)
+       - patch_size: tuple containing patch size, 3D (p1, p2, p3)
 
     Outputs:
        - X: Train X data matrix for the particular channel [num_samples, p1, p2, p3]
@@ -430,6 +430,7 @@ def get_patches(image, centers, patch_size=(16, 16, 16)):
         padding = tuple((idx, size-idx) for idx, size in zip(patch_half, patch_size))
         new_image = np.pad(image, padding, mode='constant', constant_values=0)
         slices = [[slice(c_idx-p_idx, c_idx+(s_idx-p_idx)) for (c_idx, p_idx, s_idx) in zip(center, patch_half, patch_size)] for center in new_centers]
-        patches = [new_image[idx] for idx in slices]
+        # patches = [new_image[idx] for idx in slices]
+        patches = [new_image[tuple(idx)] for idx in slices]
 
     return patches

@@ -2,7 +2,7 @@
 
 import os
 import sys
-socket, csv, time, fnmatch, re, string, json
+import socket, csv, time, fnmatch, re, string, json
 import numpy as np
 from nibabel import load as load_nii
 import pandas as pd
