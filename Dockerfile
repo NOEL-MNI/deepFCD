@@ -1,11 +1,11 @@
 FROM nvidia/cuda:10.0-cudnn7-devel-ubuntu18.04
-MAINTAINER Ravnoor Gill <ravnoor@gmail.com>
+LABEL maintainer="Ravnoor Singh Gill <ravnoor@gmail.com>"
 
-RUN apt-get update \
- && apt-get install -y git \
-                       wget \
-                       bzip2 \
-                       build-essential \
+RUN apt-get update && apt-get upgrade -y \
+    && apt-get install -y git \
+                        wget \
+                        bzip2 \
+                        build-essential \
  && apt-get clean \
  && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
 
@@ -17,3 +17,6 @@ RUN wget --quiet https://repo.anaconda.com/miniconda/Miniconda3-py37_4.9.2-Linux
 
 RUN conda install --yes Theano=1.0.4 keras=2.2.4 -c conda-forge
 
+COPY app/ /app/
+
+RUN pip install -r /app/requirements.txt
