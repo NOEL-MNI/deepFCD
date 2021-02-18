@@ -13,6 +13,7 @@ from nibabel.processing import resample_to_output as resample
 from mo_dots import wrap, Data
 import pandas as pd
 
+
 def datestr():
     now = time.gmtime()
     return '{}{:02}{:02}_{:02}{:02}'.format(now.tm_year, now.tm_mon, now.tm_mday, now.tm_hour, now.tm_min)
@@ -23,6 +24,7 @@ def get_nii_hdr_affine(t1w_fname):
     header = nib.load(t1w_fname).header
     affine = header.get_qform()
     return nifti, header, affine, shape
+
 
 def process_dense_CRF(id, args, root_dir='/host/hamlet/local_raid/data/ravnoor/01_Projects/12_deepMask/src_T1/catanzaro'):
 
@@ -64,30 +66,15 @@ def denseCRF(id, t1, input_shape, config, out_dir, pred_labels):
         find_replace_re(config_tmp, fs, rs)
     subprocess.call(["/host/hamlet/local_raid/data/ravnoor/01_Projects/12_deepMask/src/densecrf/dense3dCrf/dense3DCrfInferenceOnNiis", "-c", config_tmp])
 
+
 def find_replace_re(config_tmp, find_str, replace_str):
     with fileinput.FileInput(config_tmp, inplace=True, backup='.bak') as file:
         for line in file:
             print(re.sub(find_str, str(replace_str), line.rstrip(), flags=re.MULTILINE), end='\n')
 
-args=Data()
+args = Data()
 
 args.basedir = '/host/hamlet/local_raid/data/ravnoor/01_Projects/12_deepMask/src_T1/predictions/vnet.masker_T1.20180316_2128'
-
-# csv_file = '/host/hamlet/local_raid/data/ravnoorX/MNI.photonAI/data/PAC2019_BrainAge_Training.csv'
-# df = pd.read_csv(csv_file)
-#
-# # exclude: sub-1531 [idx:1358], sub-2835 [1970], sub-2450 [1971], sub-587 [2221]
-#
-# df['subject_ID'] = df['subject_ID'].str.replace('sub', 'sub-')
-# df['subject_ID'] = df['subject_ID'].str.replace(r'(\d+)', lambda m: m.group(1).zfill(4))
-#
-# # data = data.drop("Ireland", axis=0)
-# df = df.set_index('subject_ID')
-# df = df.drop(['sub-1531', 'sub-2835', 'sub-2450', 'sub-0587'], axis=0).reset_index()
-# df = df[df['subject_ID'] != ]
-
-
-# df.to_csv('scans.csv')
 
 scan = sys.argv[1]
 
