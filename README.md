@@ -5,8 +5,10 @@
 <p align="center">
       <a href="https://www.python.org/">
         <img src="https://img.shields.io/badge/Python-3.6-ff69b4.svg" /></a>
-      <a href= "https://pytorch.org/">
-        <img src="https://img.shields.io/badge/PyTorch-1.7-2BAF2B.svg" /></a>
+      <a href= "https://keras.io/">
+        <img src="https://img.shields.io/badge/Keras-2.2.4-2BAF2B.svg" /></a>
+      <a href= "https://github.com/Theano/Theano">
+        <img src="https://img.shields.io/badge/Theano-1.0.4-2BAF2B.svg" /></a>
       <a href= "https://github.com/NOEL-MNI/deepFCD/blob/main/LICENSE">
         <img src="https://img.shields.io/badge/License-BSD%203--Clause-blue.svg" /></a>
       <a href= "https://zenodo.org/deposit/4521706">
@@ -16,7 +18,7 @@
 
 ------------------------
 
-![](assets/diagram.png)
+![](assets/diagram.jpg)
 
 ### Please cite:
 ```
