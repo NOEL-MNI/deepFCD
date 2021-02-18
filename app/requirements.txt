@@ -1,5 +1,6 @@
 argparse
 matplotlib
+mo_dots
 nibabel
 nilearn
 numpy

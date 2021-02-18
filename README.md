@@ -35,7 +35,7 @@
 
 ## Pre-requisites
 ###TODO: Update version requirements
-```console
+```Shell
 1. Python == 3.6
 2. Keras == 2.2.4
 3. Theano == 1.0.4
@@ -44,7 +44,7 @@
 
 ## Installation
 
-```console
+```Shell
 conda create -n deepFCD python=3.8
 conda activate deepFCD
 pip install -r app/requirements.txt
@@ -54,7 +54,7 @@ pip install -r app/requirements.txt
 ## Usage
 ###TODO: Training and Inference
 ### Docker
-```console
+```Shell
 docker run -it -v /tmp:/tmp docker.pkg.github.com/noel-mni/deepfcd/app:latest /app/inference.py \
                                             $PATIENT_ID \
                                             /tmp/T1.nii.gz /tmp/FLAIR.nii.gz \
@@ -63,6 +63,6 @@ docker run -it -v /tmp:/tmp docker.pkg.github.com/noel-mni/deepfcd/app:latest /a
 
 ## License
 <a href= "https://opensource.org/licenses/BSD-3-Clause"><img src="https://img.shields.io/badge/License-BSD%203--Clause-blue.svg" /></a>
-```
+```Shell
 Copyright 2021 Neuroimaging of Epilepsy Laboratory, McGill University
 ```
