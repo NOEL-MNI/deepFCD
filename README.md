@@ -21,7 +21,7 @@
 ![](assets/diagram.jpg)
 
 ### Please cite:
-```
+```TeX
 @misc{Gill2021,
   author = {Gill RS, et al},
   title = {Multicenter Validated Detection of Focal Cortical Dysplasia using Deep Learning},
@@ -35,7 +35,7 @@
 
 ## Pre-requisites
 ###TODO: Update version requirements
-```
+```console
 1. Python == 3.6
 2. Keras == 2.2.4
 3. Theano == 1.0.4
@@ -44,7 +44,7 @@
 
 ## Installation
 
-```
+```console
 conda create -n deepFCD python=3.8
 conda activate deepFCD
 pip install -r app/requirements.txt
@@ -54,8 +54,8 @@ pip install -r app/requirements.txt
 ## Usage
 ###TODO: Training and Inference
 ### Docker
-```
-docker run -it -v /tmp:/tmp deepmask /app/inference.py \
+```console
+docker run -it -v /tmp:/tmp docker.pkg.github.com/noel-mni/deepfcd/app:latest /app/inference.py \
                                             $PATIENT_ID \
                                             /tmp/T1.nii.gz /tmp/FLAIR.nii.gz \
                                             /tmp
