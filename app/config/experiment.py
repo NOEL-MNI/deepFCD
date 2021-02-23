@@ -40,7 +40,6 @@ else:
     options['initial_epoch_2'] = 1
 
 # cases to exclude
-# exclude = ['.DS_Store', '._.DS_Store', '078', '095', '04915T', '05015T', '05115T', '05915T']
 options['exclude'] = ['.DS_Store', '._.DS_Store', '078', '095']
 
 # threshold to select voxels for training, discarding CSF and darker WM in FLAIR
@@ -64,6 +63,3 @@ options['patience'] = 15
 options['weight_paths'] = None
 # randomize training features before fitting the model.
 options['randomize_train'] = True
-
-
- # options\[\'\b(\w*)\'\]
