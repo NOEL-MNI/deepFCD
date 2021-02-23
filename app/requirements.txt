@@ -1,4 +1,5 @@
 argparse
+h5py
 matplotlib
 mo_dots
 nibabel
