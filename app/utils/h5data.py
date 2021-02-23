@@ -9,6 +9,16 @@ from .patch_dataloader import binarize_label_gm, select_voxels_from_previous_mod
 
 
 def create_dataset(data_path, X, y):
+        """
+    Load train patches with size equal to patch_size, given a list of selected voxels
+
+    Inputs:
+       - X: training X data matrix for the particular channel [num_samples, p1, p2, p3]
+       - y: training y labels [num_samples,]
+    
+    Outputs:
+       - data_path: compressed HDF5 dataset with X and y
+    """
     with h5py.File(data_path, 'w') as f:
         # f = h5py.File(data_path, 'w')
         # Creating dataset to store features
@@ -31,13 +41,12 @@ def load_train_patches(x_data, y_data, selected_voxels, patch_size, subcort_mask
        - patch_size: tuple containing patch size, 3D (p1, p2, p3)
 
     Outputs:
-       - X: Train X data matrix for the particular channel [num_samples, p1, p2, p3]
-       - Y: Train Y labels [num_samples, p1, p2, p3]
+       - X: train X data matrix for the particular channel [num_samples, p1, p2, p3]
+       - Y: train Y labels [num_samples, p1, p2, p3]
     """
 
     # load images and normalize their intensties
     images = [load_nii(name).get_data() for name in tqdm(x_data, desc="loading MRI images")]
-    # images_norm = images
     images_norm = [(im.astype(dtype=datatype) - im[np.nonzero(im)].mean()) / im[np.nonzero(im)].std() for im in tqdm(images, desc="normalize MRI intensities")]
     del images
 
@@ -59,9 +68,7 @@ def load_train_patches(x_data, y_data, selected_voxels, patch_size, subcort_mask
 
     # load all positive samples (lesional voxels) up to a maximum of n_patches
     np.random.seed(seed)
-    # len_indices = []
     indices = [np.random.permutation(range(0, len(center_les))).tolist()[:min(n_patches, len(center_les))] for center_les in lesion_centers]
-    # [len_indices.append(min(n_patches, len(center_les))) for center_les in lesion_centers];
 
     lesion_small = [itemgetter(*idx)(centers) for centers, idx in zip(nolesion_centers, indices)]
     x_pos_patches = [np.array(get_patches(image, centers, patch_size)) for image, centers in zip(images_norm, lesion_small)]
@@ -96,7 +103,7 @@ def load_training_data(train_x_data, train_y_data, options, subcort_masks, model
     options: dictionary containing general hyper-parameters:
         - options['min_th'] = min threshold to remove voxels for training
         - options['patch_size'] = tuple containing patch size, 3D (p1, p2, p3)
-        - options['randomize_train'] = randomizes/shuffles the data
+        - options['randomize_train'] = randomize/shuffle the data
 
     model: CNN model used to select training candidates
 
@@ -219,5 +226,4 @@ def binarize_label_gm(mask):
     mask_ = np.zeros_like(mask)
     tmp = np.stack(np.where(mask == 1), axis=1)
     mask_[tmp[:,0], tmp[:,1], tmp[:,2]] = 1
-    # print("mask shape: {}, type: {}, unique: {}".format(mask_.shape, type(mask_), np.unique(mask_)))
     return mask_.astype(np.bool)
