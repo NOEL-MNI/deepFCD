@@ -3,7 +3,6 @@
 import os, math, sys, time, fileinput, re
 import subprocess
 from subprocess import Popen, PIPE
-# from local import *
 import argparse
 import numpy as np
 import operator
