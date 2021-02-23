@@ -34,31 +34,41 @@
 ```
 
 ## Pre-requisites
+```console
 ###TODO: Update version requirements
-```Shell
+0. Miniconda3
 1. Python == 3.6
 2. Keras == 2.2.4
 3. Theano == 1.0.4
-4. Miniconda3
+5. app/requirements.txt
 ```
 
 ## Installation
 
-```Shell
-conda create -n deepFCD python=3.8
+```console
+# install Miniconda3
+wget https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.sh -O ~/miniconda.sh
+bash ~/miniconda.sh -b -p $HOME/miniconda
+
+# create and activate a Conda environment
+conda create -n deepFCD python=3.6
 conda activate deepFCD
-pip install -r app/requirements.txt
+
+# install dependencies using Conda/pip
+conda install --yes Theano=1.0.4 keras=2.2.4 -c conda-forge
+python -m pip install -r app/requirements.txt
 ```
 
 
 ## Usage
 ###TODO: Training and Inference
 ### Docker
-```Shell
-docker run -it -v /tmp:/tmp docker.pkg.github.com/noel-mni/deepfcd/app:latest /app/inference.py \
-                                            $PATIENT_ID \
-                                            /tmp/T1.nii.gz /tmp/FLAIR.nii.gz \
-                                            /tmp
+```console
+docker run -it -v /tmp:/tmp docker.pkg.github.com/noel-mni/deepfcd/app:latest
+                                                                  /app/inference.py \
+                                                                  $PATIENT_ID \
+                                                                  /tmp/T1.nii.gz /tmp/FLAIR.nii.gz \
+                                                                  /tmp
 ```
 
 ## License
