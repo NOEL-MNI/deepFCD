@@ -8,9 +8,6 @@ options['train_2'] = True
 
 options['subcorticalMask'] = False
 
-options['train_folder'] = '/host/silius/local_raid/ravnoor/01_Projects/06_DeepLesion_LoSo/data/'
-options['test_folder'] = '/host/silius/local_raid/ravnoor/01_Projects/06_DeepLesion_LoSo/data/'
-
 options['modalities'] = ['T1', 'FLAIR']
 options['x_names'] = ['_t1.nii.gz', '_flair.nii.gz']
 
@@ -30,10 +27,11 @@ options['dropout_mc'] = False
 options['dropout_1'] = 0.2
 options['dropout_2'] = 0.2
 options['dropout_3'] = 0.4
+
+# continue interrupted training sessions
 options['load_checkpoint_1'] = False
 options['load_checkpoint_2'] = False
 options['continue_training_2'] = False
-
 if options['continue_training_2']:
     options['initial_epoch_2'] = 35
 else:
