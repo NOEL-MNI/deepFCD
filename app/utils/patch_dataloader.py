@@ -25,16 +25,6 @@ def test_scan_uncertainty(model, test_x_data, scan, options, intermediate=None, 
     - test_scan = Output image containing the probability output segmentation
     - If save_nifti --> Saves a nii file at specified location options['test_folder']/['test_scan']
     """
-    # nvmlInit()
-    # handle = nvmlDeviceGetHandleByIndex(0)
-    # info = nvmlDeviceGetMemoryInfo(handle)
-    # bsize = info.total/1024/1024
-    # # print "total GPU memory available: %d MB" % (bsize)
-    # if bsize < 2000:
-    #     batch_size = 384
-    #     print("reducing batch_size to : {}".format(batch_size))
-    #     options['batch_size'] = 100352
-    # else:
     if options['hostname'].startswith("hamlet"):
         # batch_size = 2200
         batch_size = 5120
