@@ -11,6 +11,7 @@ from tqdm import trange
 from keras import backend as K
 from utils.keras_bayes_utils import *
 
+
 def test_scan_uncertainty(model, test_x_data, scan, options, intermediate=None, save_nifti=False, uncertainty=True, candidate_mask=None, T=20):
     """
     Test data based on one model
@@ -119,6 +120,7 @@ def select_voxels_from_previous_model(model, train_x_data, options):
     mask  = [test_scan_uncertainty(model, dict(train_x_data[scans[s]]), scans[s], options, intermediate=1, uncertainty=True) > threshold for s in trange(len(scans), desc='sel_vox_prev_model_pred_mean')]
 
     return mask
+
 
 def predict_uncertainty(model, data, batch_size, T=10):
     input = model.layers[0].input
@@ -294,26 +296,18 @@ def load_train_patches(x_data, y_data, selected_voxels, patch_size, subcort_mask
 
     # load labels
 
-    # lesion_masks = [load_nii(name).get_data().astype(dtype=np.bool) for name in y_data]
     lesion_masks = [binarize_label_gm(load_nii(name).get_data()) for name in y_data] # preserve only the GM component, ignore, WM and transmantle sign
-    # nolesion_masks = [np.logical_and(np.logical_not(lesion), brain) for lesion, brain in zip(lesion_masks, selected_voxels)]
 
     # load subcortical masks to exclude these voxels from training
     if subcort_masks is not None:
         submasks = [load_nii(name).get_data() for name in subcort_masks]
         nolesion_masks = [np.logical_and(np.logical_not(lesion), submask, brain) for lesion, submask, brain in zip(lesion_masks, submasks, selected_voxels)]
     else:
-        # nolesion_masks = [np.logical_and(np.logical_not(lesion), brain) for lesion, brain in zip(lesion_masks, selected_voxels)]
         nolesion_masks = [np.logical_and(np.logical_not(binary_dilation(lesion, iterations=5)), brain) for lesion, brain in zip(lesion_masks, selected_voxels)]
 
     # Get all the x,y,z coordinates for each image
     lesion_centers = [get_mask_voxels(mask) for mask in lesion_masks]
     nolesion_centers = [get_mask_voxels(mask) for mask in nolesion_masks]
-    # x=0
-    # for mask in nolesion_masks:
-    #     if not mask.any():
-    #         print(x)
-    #     x+=1
 
     # load all positive samples (lesional voxels) and the same number of random negatives samples
     np.random.seed(seed)
@@ -321,16 +315,7 @@ def load_train_patches(x_data, y_data, selected_voxels, patch_size, subcort_mask
     x_pos_patches = [np.array(get_patches(image, centers, patch_size)) for image, centers in zip(images_norm, lesion_centers)]
     y_pos_patches = [np.array(get_patches(image, centers, patch_size)) for image, centers in zip(lesion_masks, lesion_centers)]
 
-    # for center_no_les, center_les in zip(nolesion_centers, lesion_centers):
-    #     print(range(0, len(center_les)))
-
     indices = [np.random.permutation(range(0, len(center_no_les))).tolist()[:len(center_les)] for center_no_les, center_les in zip(nolesion_centers, lesion_centers)]
-    # x=0
-    # for idcs in indices:
-    #     if not idcs:
-    #         print(x)
-    #         print(idcs)
-    #     x+=1
 
     nolesion_small = [itemgetter(*idx)(centers) for centers, idx in zip(nolesion_centers, indices)]
     x_neg_patches = [np.array(get_patches(image, centers, patch_size)) for image, centers in zip(images_norm, nolesion_small)]
