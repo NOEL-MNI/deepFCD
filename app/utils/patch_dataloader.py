@@ -7,17 +7,16 @@ import nibabel as nib
 from operator import itemgetter, add
 import os
 from tqdm import trange
-# from pynvml import *
 from keras import backend as K
 from utils.keras_bayes_utils import *
 
 
 def test_scan_uncertainty(model, test_x_data, scan, options, intermediate=None, save_nifti=False, uncertainty=True, candidate_mask=None, T=20):
     """
-    inference data based on a single model
+    inference based on a single model
     inputs:
     - test_x_data: a nested dictionary containing training image paths:
-            train_x_data['scan_name']['modality'] = path_to_image_modality
+        - train_x_data['scan_name']['modality'] = path_to_image_modality
     - save_nifti: save image segmentation
     - candidate_mask: a binary masks containing voxels to classify
 
@@ -112,7 +111,7 @@ def predict_uncertainty(model, data, batch_size, T=10):
 
 def predict_stochastic(f, ins, batch_size=128, verbose=False):
     '''
-        loop over some data in batches.
+    loop over some data in batches.
     '''
     nb_sample = len(ins)
     outs = []
@@ -156,14 +155,13 @@ def load_training_data(train_x_data, train_y_data, options, subcort_masks, model
     outputs:
         - X: np.array [num_samples, num_channels, p1, p2, p2]
         - Y: np.array [num_samples, 1]
-
     '''
     # get_scan names and number of modalities used
     scans = list(train_x_data.keys())
     modalities = train_x_data[scans[0]].keys()
 
     # select voxels for training:
-    #   if no model is passed, training samples are extracted by discarding the CSF and darker WM in FLAIR, and use all remaining voxels.
+    #   if no model is passed, training samples are extracted by discarding the CSF and darker WM in FLAIR, and use all remaining voxels
     #   if model is passed, use the trained model to extract all voxels with probability > 0.4
     if model is None:
         flair_scans = [train_x_data[s]['FLAIR'] for s in scans]
@@ -208,16 +206,15 @@ def load_training_data(train_x_data, train_y_data, options, subcort_masks, model
 
 def select_training_voxels(input_masks, threshold=0.5, datatype=np.float32, t1=0):
     """
-    Select voxels for training based on a intensity threshold
+    select voxels for training based on an intensity threshold
 
-    Inputs:
-        - input_masks: list containing all subject image paths for a single modality
-        - threshold: minimum threshold to apply (after normalizing images with 0 mean and 1 std)
+    inputs:
+    - input_masks: list containing all subject image paths for a single modality
+    - threshold: minimum threshold to apply (after normalizing images with 0 mean and 1 std)
 
-    Output:
-        - rois: list where each element contains the subject binary mask for selected voxels [len(x), len(y), len(z)]
+    output:
+    - rois: list where each element contains the subject binary mask for selected voxels [len(x), len(y), len(z)]
     """
-
     # load images and normalize their intensities
     images = [load_nii(image_name).get_data() for image_name in input_masks]
     images_norm = [(im.astype(dtype=datatype) - im[np.nonzero(im)].mean()) / im[np.nonzero(im)].std() for im in images]
@@ -229,14 +226,14 @@ def select_training_voxels(input_masks, threshold=0.5, datatype=np.float32, t1=0
 
 def select_testing_voxels(flair, t1=None, threshold=0.5, datatype=np.float32):
     """
-    Select voxels for training based on a intensity threshold
+    select voxels for training based on an intensity threshold
 
-    Inputs:
-        - input_masks: list containing all subject image paths for a single modality
-        - threshold: minimum threshold to apply (after normalizing images with 0 mean and 1 std)
+    inputs:
+    - input_masks: list containing all subject image paths for a single modality
+    - threshold: minimum threshold to apply (after normalizing images with 0 mean and 1 std)
 
-    Output:
-        - rois: list where each element contains the subject binary mask for selected voxels [len(x), len(y), len(z)]
+    output:
+    - rois: list where each element contains the subject binary mask for selected voxels [len(x), len(y), len(z)]
     """
     images = [load_nii(image_name).get_data() for image_name in flair]
     images_norm = [(im.astype(dtype=datatype) - im[np.nonzero(im)].mean()) / im[np.nonzero(im)].std() for im in images]
@@ -246,25 +243,23 @@ def select_testing_voxels(flair, t1=None, threshold=0.5, datatype=np.float32):
 
 def load_train_patches(x_data, y_data, selected_voxels, patch_size, subcort_masks=None, seed=666, datatype=np.float32):
     """
-    Load train patches with size equal to patch_size, given a list of selected voxels
+    load train patches with size equal to patch_size, given a list of selected voxels
 
-    Inputs:
-       - x_data: list containing all subject image paths for a single modality
-       - y_data: list containing all subject image paths for the labels
-       - selected_voxels: list where each element contains the subject binary mask for selected voxels [len(x), len(y), len(z)]
-       - patch_size: tuple containing patch size, 3D (p1, p2, p3)
+    inputs:
+    - x_data: list containing all subject image paths for a single modality
+    - y_data: list containing all subject image paths for the labels
+    - selected_voxels: list where each element contains the subject binary mask for selected voxels [len(x), len(y), len(z)]
+    - patch_size: tuple containing patch size, 3D (p1, p2, p3)
 
-    Outputs:
-       - X: Train X data matrix for the particular channel [num_samples, p1, p2, p3]
-       - Y: Train Y labels [num_samples, p1, p2, p3]
+    outputs:
+    - X: train X data matrix for the particular channel [num_samples, p1, p2, p3]
+    - Y: train Y labels [num_samples, p1, p2, p3]
     """
-
     # load images and normalize their intensties
     images = [load_nii(name).get_data() for name in x_data]
     images_norm = [(im.astype(dtype=datatype) - im[np.nonzero(im)].mean()) / im[np.nonzero(im)].std() for im in images]
 
     # load labels
-
     lesion_masks = [binarize_label_gm(load_nii(name).get_data()) for name in y_data] # preserve only the GM component, ignore, WM and transmantle sign
 
     # load subcortical masks to exclude these voxels from training
@@ -298,7 +293,15 @@ def load_train_patches(x_data, y_data, selected_voxels, patch_size, subcort_mask
 
 
 def binarize_label_gm(mask):
-    # discard labels wm (2) and transmantle sign (6)
+    """
+    discard labels wm (2) and transmantle sign (6)
+    
+    input:
+    - mask: binary mask with GM (intensity:1), WM (2) and transmantle sign (6)
+
+    output:
+    - mask: binary mask with GM (intensity:1)
+    """
     mask_ = np.zeros_like(mask)
     tmp = np.stack(np.where(mask == 1), axis=1)
     mask_[tmp[:,0], tmp[:,1], tmp[:,2]] = 1
@@ -307,20 +310,21 @@ def binarize_label_gm(mask):
 
 def load_test_patches(test_x_data, options, patch_size, batch_size, threshold, voxel_candidates=None, datatype=np.float32):
     """
-    Function generator to load test patches with size equal to patch_size, given a list of selected voxels. Patches are
-    returned in batches to reduce the amount of RAM used
+    load test patches with size equal to patch_size, given a list of selected voxels
+    patches are returned in batches to limit RAM usage
 
-    Inputs:
-       - x_data: list containing all subject image paths for a single modality
-       - selected_voxels: list where each element contains the subject binary mask for selected voxels [len(x), len(y), len(z)]
-       - tuple containing patch size, either 2D (p1, p2, 1) or 3D (p1, p2, p3)
-       - Voxel candidates: a binary mask containing voxels to select for testing
+    inputs:
+    - x_data: list containing all subject image paths for a single modality
+    - patch_size: tuple containing patch size, 3D (p1, p2, p3)
+    - voxel_candidates: a binary mask containing voxels to select for testing
 
-    Outputs (in batches):
-       - X: Train X data matrix for the particular channel [num_samples, p1, p2, p3]
-       - voxel_coord: list of tuples corresponding voxel coordinates (x,y,z) of selected patches
+    intermediate:
+    - selected_voxels: list where each element contains the subject binary mask for selected voxels [len(x), len(y), len(z)]
+
+    outputs:
+    - X: train X data matrix for the particular channel [num_samples, p1, p2, p3]
+    - voxel_coord: list of tuples corresponding voxel coordinates (x,y,z) of selected patches
     """
-
     # get scan names and number of modalities used
     scans = list(test_x_data.keys())
     modalities = test_x_data[scans[0]].keys()
@@ -332,9 +336,9 @@ def load_test_patches(test_x_data, options, patch_size, batch_size, threshold, v
         raw_images = [load_nii(test_x_data[s][m]).get_data() for s in scans]
         images.append([(im.astype(dtype=datatype) - im[np.nonzero(im)].mean()) / im[np.nonzero(im)].std() for im in raw_images])
 
-    # select voxels for testing. Discard CSF and darker WM in FLAIR.
-    # If voxel_candidates is not selected, using intensity > 0.4 in FLAIR, else use
-    # the binary mask to extract candidate voxels
+    # select voxels for testing - discard CSF and darker WM in FLAIR
+    # if voxel_candidates is not selected, use intensity > 0.4 in FLAIR, else:
+    # use the binary mask to extract candidate voxels
     if voxel_candidates is None:
         flair_scans = [test_x_data[s]['FLAIR'] for s in scans]
         selected_voxels = [get_mask_voxels(mask) for mask in select_training_voxels(flair_scans, threshold)][0]
@@ -352,15 +356,14 @@ def load_test_patches(test_x_data, options, patch_size, batch_size, threshold, v
 
 def get_mask_voxels(mask):
     """
-    Compute x,y,z coordinates of a binary mask
+    compute x,y,z coordinates of a binary mask
 
-    Input:
-       - mask: binary mask
+    input:
+    - mask: binary mask
 
-    Output:
-       - list of tuples containing the (x,y,z) coordinate for each of the input voxels
+    output:
+    - list of tuples containing the (x,y,z) coordinate for each of the input voxels
     """
-
     indices = np.stack(np.nonzero(mask), axis=1)
     indices = [tuple(idx) for idx in indices]
     return indices
@@ -368,10 +371,20 @@ def get_mask_voxels(mask):
 
 def get_patches(image, centers, patch_size=(16, 16, 16)):
     """
-    Get image patches of arbitrary size based on a set of centers
+    get image patches of specified size based on a set of centers
+    
+    inputs:
+    - mask: binary mask
+    - centers: list of tuples corresponding voxel coordinates (x,y,z) of selected patches
+    - patch_size: tuple containing 3D (p1, p2, p3)
+
+    output:
+    - list of tuples containing the (x,y,z) coordinate for each of the input voxels
+
+    # if the size is even-numberered, the patch will be centered
+    # if not, it will try to create an square almost centered.
+    # doing so allows pooling (max-pool, avg-pool, etc.) when using encoders/unets
     """
-    # If the size has even numbers, the patch will be centered. If not, it will try to create an square almost centered.
-    # By doing this we allow pooling when using encoders/unets.
     patches = []
     list_of_tuples = all([isinstance(center, tuple) for center in centers])
     sizes_match = [len(center) == len(patch_size) for center in centers]
@@ -379,11 +392,8 @@ def get_patches(image, centers, patch_size=(16, 16, 16)):
     if list_of_tuples and sizes_match:
         patch_half = tuple([idx//2 for idx in patch_size])
         new_centers = [map(add, center, patch_half) for center in centers]
-        # padding = tuple((np.int(idx), np.int(size)-np.int(idx)) for idx, size in zip(patch_half, patch_size))
         padding = tuple((idx, size-idx) for idx, size in zip(patch_half, patch_size))
         new_image = np.pad(image, padding, mode='constant', constant_values=0)
         slices = [[slice(c_idx-p_idx, c_idx+(s_idx-p_idx)) for (c_idx, p_idx, s_idx) in zip(center, patch_half, patch_size)] for center in new_centers]
-        # patches = [new_image[idx] for idx in slices]
         patches = [new_image[tuple(idx)] for idx in slices]
-
     return patches
