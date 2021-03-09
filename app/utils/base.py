@@ -1,35 +1,25 @@
-# from __future__ import print_function
-import os, re, gc
-import subprocess
+import os
+import time
 import numpy as np
 import pandas as pd
-
+from shutil import copyfile
+import h5py
 from nibabel import load as load_nii
 import nibabel as nib
-
-import _pickle as cPickle
-import copy
-from shutil import copyfile
-import time
 from keras.models import load_model
 from keras.callbacks import EarlyStopping, CSVLogger, ModelCheckpoint, LambdaCallback
 from keras.utils.np_utils import to_categorical
 from keras.utils.io_utils import HDF5Matrix
-
-# from pynvml import *
-
 import json
 from sklearn.model_selection import LeaveOneGroupOut
-
 from utils.patch_dataloader import *
 from utils.post_processor import *
 
 
-def partition_leave_one_site_out(datafile='data_site_scanner_labels.xlsx', test_site=None):
+def partition_leave_one_site_out(datafile=None, test_site=None):
     data = pd.read_excel(datafile)
     ids = data['index']
     groups = data['testing_dataset'].values
-
     logo = LeaveOneGroupOut()
     logo.get_n_splits(ids, ids, groups)
 
@@ -41,51 +31,39 @@ def partition_leave_one_site_out(datafile='data_site_scanner_labels.xlsx', test_
         folds[test_group]['train_pids'], folds[test_group]['test_pids'] = ids[train_index].values, ids[test_index].values
 
     train, test = folds[test_site]['train_pids'], folds[test_site]['test_pids']
-
     return train, test, folds
 
+
 def create_dataset(data_path, X, y):
-    import h5py
     f = h5py.File(data_path, 'w')
-    # Creating dataset to store features
+    # create dataset to store features
     X_dset = f.create_dataset('data', X.shape, dtype='f')
     X_dset[:] = X
-    # Creating dataset to store labels
+    # create dataset to store labels
     y_dset = f.create_dataset('labels', y.shape, dtype='i')
     y_dset[:] = y
     f.close()
 
+
 def train_model(model, train_x_data, train_y_data, options):
     """
-    Train the model using a cascade of two CNN
+    train the model using a cascade of two CNNs
 
     inputs:
-
     - CNN model: a list containing the two cascaded CNN models
-
     - train_x_data: a nested dictionary containing training image paths:
            train_x_data['scan_name']['modality'] = path_to_image_modality
-
     - train_y_data: a dictionary containing labels
         train_y_data['scan_name'] = path_to_label
-
     - options: dictionary containing general hyper-parameters:
 
-
-    Outputs:
+    outputs:
         - trained model: list containing the two cascaded CNN models after training
     """
-    if options['hostname'].startswith("hamlet"):
-        # batch_size = options['mini_batch_size']
-        batch_size = int(options['mini_batch_size']/2)
-    else:
-        batch_size = int(options['mini_batch_size']/2)
-	# RAND = np.array_str(np.random.randint(1000,size=1))
-    pwd = os.getcwd()
+    batch_size = int(options['mini_batch_size']/2)
     RAND = time.strftime('%a''_' '%H_%M_%S')
     net_logs = os.path.join(options['weight_paths'], 'logs')
     if not os.path.exists(net_logs):
-        # os.mkdir(options['weight_paths'])
         os.mkdir(os.path.join(options['weight_paths'], 'checkpoints'))
         os.mkdir(net_logs)
 
@@ -99,10 +77,10 @@ def train_model(model, train_x_data, train_y_data, options):
     csv_logger = CSVLogger(net_logs + '/training_' + options['experiment'] + '_' + net_model + '_' + RAND + '_adadelta_log.csv')
     json_log = open('{:}/checkpoint_1.json'.format(os.path.join(options['weight_paths'], 'checkpoints')), mode='wt', buffering=1)
     json_logging_callback = LambdaCallback(
-        on_epoch_end=lambda epoch, logs: json_log.write(
-            json.dumps({'epoch': epoch, 'val_loss': logs['val_loss']}) + '\n'),
-        on_train_end=lambda logs: json_log.close()
-    )
+                                        on_epoch_end=lambda epoch, logs: json_log.write(
+                                            json.dumps({'epoch': epoch, 'val_loss': logs['val_loss']}) + '\n'),
+                                        on_train_end=lambda logs: json_log.close()
+                                        )
 
     if os.path.isfile(net_weights) and options['load_checkpoint_1']:
         print("loading trained DNN1, model[0]: {} exists".format(net_weights))
@@ -124,7 +102,11 @@ def train_model(model, train_x_data, train_y_data, options):
             print( '====> # patch size:', (X.shape[2],X.shape[3],X.shape[4]) ,'\n' )
             print( '====> # modalities:', (X.shape[1]) ,'\n' )
 
-            model[0].fit(X, labels, batch_size=batch_size, epochs=options['max_epochs_1'], verbose=2, shuffle="batch", validation_data=(X_val,y_val), callbacks=[early_stopping_monitor, model_checkpoint, csv_logger, json_logging_callback])
+            model[0].fit(
+                        X, labels, batch_size=batch_size, epochs=options['max_epochs_1'],
+                        verbose=2,shuffle="batch", validation_data=(X_val,y_val),
+                        callbacks=[early_stopping_monitor, model_checkpoint, csv_logger, json_logging_callback]
+                        )
         else:
             X, Y = load_training_data(train_x_data, train_y_data, options, subcort_masks=None)
             labels = to_categorical(Y, num_classes=2)
@@ -136,7 +118,11 @@ def train_model(model, train_x_data, train_y_data, options):
             print( '====> # patch size:', (X.shape[2],X.shape[3],X.shape[4]) ,'\n' )
             print( '====> # modalities:', (X.shape[1]) ,'\n' )
 
-            model[0].fit(X, labels, batch_size=batch_size, epochs=options['max_epochs_1'], verbose=2, shuffle=True, validation_split=options['train_split'], callbacks=[early_stopping_monitor, model_checkpoint, csv_logger, json_logging_callback])
+            model[0].fit(
+                        X, labels, batch_size=batch_size, epochs=options['max_epochs_1'],
+                        verbose=2, shuffle=True, validation_split=options['train_split'],
+                        callbacks=[early_stopping_monitor, model_checkpoint, csv_logger, json_logging_callback]
+                        )
 
         copy_most_recent_model(os.path.join(options['weight_paths'], 'checkpoints'), net_model)
     # second iteration (CNN2):
@@ -150,10 +136,10 @@ def train_model(model, train_x_data, train_y_data, options):
         csv_logger = CSVLogger(net_logs + '/training_' + options['experiment'] + '_' + net_model + '_' + RAND + '_adadelta_log.csv')
         json_log = open('{:}/checkpoint_2.json'.format(os.path.join(options['weight_paths'], 'checkpoints')), mode='wt', buffering=1)
         json_logging_callback = LambdaCallback(
-            on_epoch_end=lambda epoch, logs: json_log.write(
-                json.dumps({'epoch': epoch, 'val_loss': logs['val_loss']}) + '\n'),
-            on_train_end=lambda logs: json_log.close()
-        )
+                                                on_epoch_end=lambda epoch, logs: json_log.write(
+                                                json.dumps({'epoch': epoch, 'val_loss': logs['val_loss']}) + '\n'),
+                                                on_train_end=lambda logs: json_log.close()
+                                                )
 
         datapath = os.path.join(options['hdf5_data_dir'], options['experiment'] + '_LoSO_data_intermediate.h5')
         if os.path.isfile(net_weights) and options['load_checkpoint_2']:
@@ -172,11 +158,19 @@ def train_model(model, train_x_data, train_y_data, options):
                 print( '====> # 3D training patches:', X.shape[0] ,'\n' )
                 print( '====> # patch size:', (X.shape[2],X.shape[3],X.shape[4]) ,'\n' )
                 print( '====> # modalities:', (X.shape[1]) ,'\n' )
-                model[1].fit(X, labels, batch_size=batch_size, initial_epoch=options['initial_epoch_2'], epochs=options['max_epochs_2'], verbose=2, shuffle="batch", validation_data=(X_val,y_val), callbacks=[early_stopping_monitor, model_checkpoint, csv_logger, json_logging_callback])
+                model[1].fit(
+                            X, labels, batch_size=batch_size, initial_epoch=options['initial_epoch_2'],
+                            epochs=options['max_epochs_2'], verbose=2, shuffle="batch", validation_data=(X_val,y_val),
+                            callbacks=[early_stopping_monitor, model_checkpoint, csv_logger, json_logging_callback]
+                            )
             elif options['continue_training_2']:
                 X, Y = load_training_data(train_x_data, train_y_data, options, model=model[0], subcort_masks=None)
                 labels = to_categorical(Y, num_classes=2)
-                model[1].fit(X, labels, batch_size=batch_size, initial_epoch=options['initial_epoch_2'], epochs=options['max_epochs']+50, verbose=2, shuffle=True, validation_split=options['train_split'], callbacks=[early_stopping_monitor, model_checkpoint, csv_logger, json_logging_callback])
+                model[1].fit(
+                            X, labels, batch_size=batch_size, initial_epoch=options['initial_epoch_2'],
+                            epochs=options['max_epochs']+50, verbose=2, shuffle=True, validation_split=options['train_split'],
+                            callbacks=[early_stopping_monitor, model_checkpoint, csv_logger, json_logging_callback]
+                            )
             else:
                 pass
         else:
@@ -193,7 +187,11 @@ def train_model(model, train_x_data, train_y_data, options):
                 print( '====> # 3D training patches:', X.shape[0] ,'\n' )
                 print( '====> # patch size:', (X.shape[2],X.shape[3],X.shape[4]) ,'\n' )
                 print( '====> # modalities:', (X.shape[1]) ,'\n' )
-                model[1].fit(X, labels, batch_size=batch_size, epochs=options['max_epochs_2'], verbose=2, shuffle="batch", validation_data=(X_val,y_val), callbacks=[early_stopping_monitor, model_checkpoint, csv_logger, json_logging_callback])
+                model[1].fit(
+                            X, labels, batch_size=batch_size, epochs=options['max_epochs_2'],
+                            verbose=2, shuffle="batch", validation_data=(X_val,y_val),
+                            callbacks=[early_stopping_monitor, model_checkpoint, csv_logger, json_logging_callback]
+                            )
             else:
                 X, Y = load_training_data(train_x_data, train_y_data, options, model=model[0], subcort_masks=None)
                 labels = to_categorical(Y, num_classes=2)
@@ -205,37 +203,37 @@ def train_model(model, train_x_data, train_y_data, options):
                 print( '====> # patch size:', (X.shape[2], X.shape[3], X.shape[4]) ,'\n' )
                 print( '====> # modalities:', (X.shape[1]) ,'\n' )
 
-                model[1].fit(X, labels, batch_size=batch_size, epochs=options['max_epochs_2'], verbose=2, shuffle=True, validation_split=options['train_split'], callbacks=[early_stopping_monitor, model_checkpoint, csv_logger, json_logging_callback])
+                model[1].fit(
+                            X, labels, batch_size=batch_size, epochs=options['max_epochs_2'],
+                            verbose=2, shuffle=True, validation_split=options['train_split'],
+                            callbacks=[early_stopping_monitor, model_checkpoint, csv_logger, json_logging_callback]
+                            )
 
             copy_most_recent_model(os.path.join(options['weight_paths'], 'checkpoints'), net_model)
     return model
 
 
-
 def test_model(model, test_x_data, options, uncertainty=False):
-
-    print("testing the model for scan: {}".format(test_x_data.keys()))
-
     threshold = options['th_dnn_train_2']
+    scan = options['test_scan'] + '_'
     # organize experiments
     # first network
-    options['test_name'] = options['experiment'] + '_prob_0.nii.gz'
-    options['test_mean_name'] = options['experiment'] + '_prob_mean_0.nii.gz'
-    options['test_var_name'] = options['experiment'] + '_prob_var_0.nii.gz'
+    options['test_name'] = scan + options['experiment'] + '_prob_0.nii.gz'
+    options['test_mean_name'] = scan + options['experiment'] + '_prob_mean_0.nii.gz'
+    options['test_var_name'] = scan + options['experiment'] + '_prob_var_0.nii.gz'
 
     t1, _, _ = test_scan(model[0], test_x_data, options, save_nifti=True, uncertainty=True, T=20)
 
     # second network
-    options['test_name'] = options['experiment'] + '_prob_1.nii.gz'
-    options['test_mean_name'] = options['experiment'] + '_prob_mean_1.nii.gz'
-    options['test_var_name'] = options['experiment'] + '_prob_var_1.nii.gz'
+    options['test_name'] = scan + options['experiment'] + '_prob_1.nii.gz'
+    options['test_mean_name'] = scan + options['experiment'] + '_prob_mean_1.nii.gz'
+    options['test_var_name'] = scan + options['experiment'] + '_prob_var_1.nii.gz'
     t2, affine, header = test_scan(model[1], test_x_data, options, save_nifti=True, uncertainty=True, T=50, candidate_mask=t1>threshold)
 
     # postprocess the output segmentation
-    options['test_name'] = options['experiment'] + '_out_CNN.nii.gz'
-    out_segmentation, lpred, count = post_processing(t2, options, affine, header, save_nifti=True)
-
-    return t1, t2, out_segmentation, lpred, count
+    # options['test_name'] = options['experiment'] + '_out_CNN.nii.gz'
+    # out_segmentation, lpred, count = post_processing(t2, options, affine, header, save_nifti=True)
+    return t1, t2#, out_segmentation, lpred, count
 
 
 def test_scan(model, test_x_data, options, transit=None, save_nifti=False, uncertainty=False, candidate_mask=None, T=20):
@@ -251,27 +249,7 @@ def test_scan(model, test_x_data, options, transit=None, save_nifti=False, uncer
     - test_scan = Output image containing the probability output segmentation
     - If save_nifti --> Saves a nii file at specified location options['test_folder']/['test_scan']
     """
-    # nvmlInit()
-    # handle = nvmlDeviceGetHandleByIndex(0)
-    # info = nvmlDeviceGetMemoryInfo(handle)
-    # bsize = info.total/1024/1024
-    # # print( "total GPU memory available: %d MB" ) % (bsize)
-    # if bsize < 2000:
-    #     batch_size = 384
-    #     print( "reducing batch_size to : {}".format(batch_size))
-    #     options['batch_size'] = 100352
-    # else:
-    if options['hostname'].startswith("hamlet"):
-        # batch_size = 2200
-        batch_size = 2000
-        options['batch_size'] = 350000
-    if options['hostname'].startswith("silius") or options['hostname'].startswith("pandarus"):
-        # batch_size = 2200
-        batch_size = 2000
-    else:
-        # batch_size = 2800
-        batch_size = 2000
-
+    batch_size = options['mini_batch_size'] 
     # get_scan name and create an empty nii image to store segmentation
     scans = test_x_data.keys()
     flair_scans = [test_x_data[s]['FLAIR'] for s in scans]
@@ -284,18 +262,13 @@ def test_scan(model, test_x_data, options, transit=None, save_nifti=False, uncer
     # get test paths
     _, scan = os.path.split(flair_scans[0])
     test_folder = os.path.join(options['test_folder'], options['experiment'])
-    # test_folder = '/host/silius/local_raid/ravnoor/01_Projects/06_DeepLesion_LoSo/data/predictions
     if not os.path.exists(test_folder):
-        # os.path.join(test_folder, options['experiment'])
         os.mkdir(test_folder)
 
-    print('-'*60)
-    print(str.replace(scan, '_flair.nii.gz', ''))
-    print('-'*60)
     # compute lesion segmentation in batches of size options['batch_size']
     for batch, centers in load_test_patches(test_x_data, options, options['patch_size'], options['batch_size'], options['min_th'], candidate_mask):
         if uncertainty:
-            print("predicting uncertainty")
+            # predicti uncertainty
             y_pred, y_pred_var = predict_uncertainty(model, batch, batch_size=batch_size, T=T)
         else:
             y_pred = model.predict(np.squeeze(batch), batch_size=batch_size, verbose=1)
@@ -308,23 +281,14 @@ def test_scan(model, test_x_data, options, transit=None, save_nifti=False, uncer
         # out_scan = nib.Nifti1Image(seg_image, np.eye(4))
         out_scan = nib.Nifti1Image(seg_image, affine, header)
         out_scan.to_filename(os.path.join(options['pred_folder'], options['test_mean_name']))
-        in_nii = os.path.join(options['pred_folder'], options['test_mean_name'])
-        out_mnc = os.path.join(options['pred_folder'], str.replace(options['test_mean_name'], 'nii.gz', 'mnc'))
-        # subprocess.call(["/data/noel/noel2/local/brainvisa-Mandriva-2008.0-x86_64-4.1.0-2011_05_16/bin/AimsFileConvert", "-i", in_nii, "-o", out_mnc])
 
         if uncertainty:
             out_scan = nib.Nifti1Image(var_image, affine, header)
             out_scan.to_filename(os.path.join(options['pred_folder'], options['test_var_name']))
-            in_nii = os.path.join(options['pred_folder'], options['test_var_name'])
-            out_mnc = os.path.join(options['pred_folder'], str.replace(options['test_var_name'], 'nii.gz', 'mnc'))
-            # subprocess.call(["/data/noel/noel2/local/brainvisa-Mandriva-2008.0-x86_64-4.1.0-2011_05_16/bin/AimsFileConvert", "-i", in_nii, "-o", out_mnc])
-
 
     if transit is not None:
-        # test_folder = str.replace(test_folder, 'brain', 'predictions')
         if not os.path.exists(test_folder):
             os.mkdir(test_folder)
-        # out_scan = nib.Nifti1Image(seg_image, np.eye(4))
         out_scan = nib.Nifti1Image(seg_image, affine, header)
         test_name = str.replace(scan, '_flair.nii.gz', '') + '_out_pred_mean_0.nii.gz'
         out_scan.to_filename(os.path.join(test_folder, test_name))
@@ -333,16 +297,11 @@ def test_scan(model, test_x_data, options, transit=None, save_nifti=False, uncer
             out_scan = nib.Nifti1Image(var_image, affine, header)
             test_name = str.replace(scan, '_flair.nii.gz', '') + '_out_pred_var_0.nii.gz'
             out_scan.to_filename(os.path.join(test_folder, test_name))
-        # in_nii = os.path.join(test_folder, options['experiment'], options['test_name'])
-        # out_mnc = os.path.join(test_folder, options['experiment'], str.replace(options['test_name'], 'nii', 'mnc'))
-        # subprocess.call(["/data/noel/noel2/local/brainvisa-Mandriva-2008.0-x86_64-4.1.0-2011_05_16/bin/AimsFileConvert", "-i", in_nii, "-o", out_mnc])
 
-        # test_folder = str.replace(test_folder, 'brain', 'predictions')
         if not os.path.exists(os.path.join(test_folder, options['experiment'])):
             os.mkdir(os.path.join(test_folder, options['experiment']))
 
         out_scan = nib.Nifti1Image(seg_image, affine, header)
-        #out_scan.to_filename(os.path.join(options['test_folder'], options['test_scan'], options['experiment'], options['test_name']))
         test_name = str.replace(scan, '_flair.nii.gz', '') + '_out_pred_0.nii.gz'
         out_scan.to_filename(os.path.join(test_folder, test_name))
 

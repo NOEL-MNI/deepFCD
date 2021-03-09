@@ -1,11 +1,9 @@
-# from __future__ import print_function
+import os
 import numpy as np
-from scipy import ndimage as nd
 from scipy.ndimage import binary_dilation
 from nibabel import load as load_nii
 import nibabel as nib
 from operator import itemgetter, add
-import os
 from tqdm import trange
 from keras import backend as K
 from utils.keras_bayes_utils import *
@@ -39,10 +37,6 @@ def test_scan_uncertainty(model, test_x_data, scan, options, intermediate=None, 
     test_folder = options['pred_folder']
     if not os.path.exists(test_folder):
         os.mkdir(test_folder)
-
-    print('-'*60)
-    print(str.replace(scan, '_flair.nii.gz', ''))
-    print('-'*60)
 
     # compute lesion segmentation in batches of size options['batch_size']
     pred_fname = os.path.join(test_folder, str.replace(scan, '_flair.nii.gz', '') + '_out_pred_mean_0.nii.gz')
@@ -79,7 +73,6 @@ def test_scan_uncertainty(model, test_x_data, scan, options, intermediate=None, 
             out_scan.to_filename(os.path.join(test_folder, test_name))
 
             thresh_image = seg_image.copy()
-
     return thresh_image
 
 
@@ -90,7 +83,7 @@ def select_voxels_from_previous_model(model, train_x_data, options):
     threshold = options['th_dnn_train_2']
     # get_scan names
     scans = list(train_x_data.keys())
-    mask  = [test_scan_uncertainty(model, dict(train_x_data[scans[s]]), scans[s], options, intermediate=1, uncertainty=True) > threshold for s in trange(len(scans), desc='sel_vox_prev_model_pred_mean')]
+    mask  = [test_scan_uncertainty(model, dict(train_x_data[scans[s]]), scans[s], options, intermediate=1, uncertainty=True) > threshold for s in trange(len(scans), desc='sel_vox_prev_model_pred_mean', colour='magenta')]
 
     return mask
 
@@ -102,7 +95,7 @@ def predict_uncertainty(model, data, batch_size, T=10):
     K.set_image_dim_ordering('th')
     K.set_image_data_format('channels_first')
 
-    Yt_hat = np.array([predict_stochastic(f_stochastic, data, batch_size=batch_size) for _ in trange(T, ascii=True, desc="predict_stochastic")])
+    Yt_hat = np.array([predict_stochastic(f_stochastic, data, batch_size=batch_size) for _ in trange(T, ascii=True, desc="predict_stochastic", colour='green')])
     MC_pred = np.mean(Yt_hat, 0)
     MC_pred_var = np.var(Yt_hat, 0)
 
@@ -129,7 +122,6 @@ def predict_stochastic(f, ins, batch_size=128, verbose=False):
             for batch_out in batch_outs:
                 shape = (nb_sample,) + batch_out.shape[1:]
                 outs.append(np.zeros(shape))
-
         for i, batch_out in enumerate(batch_outs):
             outs[i][batch_start:batch_end] = batch_out
         if verbose:
