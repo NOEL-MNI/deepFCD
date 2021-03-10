@@ -74,16 +74,23 @@ print(model[1].summary())
 # test the cascaded model
 # --------------------------------------------------
 print('-'*70)
-print("testing new patient/s")
+print("testing new patient")
 print('-'*70)
 
 # test controls
-options['test_folder'] = '/host/hamlet/local_raid/data/ravnoor/sandbox'
-tfolder = '/host/hamlet/local_raid/data/ravnoor/sandbox'
+options['test_folder'] = sys.argv[5]
+tfolder = options['test_folder']
 
-test_list = ['mcd_0468_1']
+# test_list = ['mcd_0468_1']
+test_list = [sys.argv[2]]
+t1_file = sys.argv[3]
+t2_file = sys.argv[4]
+files = [t1_file, t2_file]
+# files = {}
+# files['T1'], files['FLAIR'] = str(t1_file), t2_file
 test_data = {}
-test_data = {f: {m: os.path.join(tfolder, f, m+'_stripped.nii.gz') for m in modalities} for f in test_list}
+# test_data = {f: {m: os.path.join(tfolder, f, m+'_stripped.nii.gz') for m in modalities} for f in test_list}
+test_data = {f: {m: os.path.join(tfolder, f, n) for m, n in zip(modalities, files)} for f in test_list}
 
 for _, scan in enumerate(tqdm(test_list, desc='serving predictions using the trained model', colour='blue')):
     t_data = {}
