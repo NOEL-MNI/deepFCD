@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
 
-import os, sys, socket, csv, time, fnmatch, re, string, json
-
+import os, sys, socket, time, json
+import multiprocessing
 from config.experiment import options
+
 hostname = socket.getfqdn()
-options['hostname'] = hostname
 
 print('-'*60)
 print("hostname : {}".format(hostname))
@@ -12,15 +12,17 @@ print('-'*60)
 
 os.environ["KERAS_BACKEND"] = "theano"
 
-if hostname.startswith("pandarus") or hostname.startswith("hamlet") or hostname.startswith("silius"):
-    options['cuda'] = sys.argv[2] # flag using gpu 1 or 2
-    if options['cuda'].startswith('cuda1'):
-        os.environ["THEANO_FLAGS"] = "mode=FAST_RUN,device=cuda1,floatX=float32"
-    else:
-        os.environ["THEANO_FLAGS"] = "mode=FAST_RUN,device=cuda0,floatX=float32"
+options['cuda'] = sys.argv[1] # flag using gpu 1 or 2
+if options['cuda'].startswith('cuda1'):
+    os.environ["THEANO_FLAGS"] = "mode=FAST_RUN,device=cuda1,floatX=float32"
+elif options['cuda'].startswith('cpu'):
+    os.environ['OMP_NUM_THREADS'] = str(multiprocessing.cpu_count())
+    os.environ['MKL_NUM_THREADS'] = str(multiprocessing.cpu_count())
+    os.environ['GOTO_NUM_THREADS'] = str(multiprocessing.cpu_count())
+    os.environ['openmp'] = 'True'
+    os.environ["THEANO_FLAGS"] = "mode=FAST_RUN,device=cpu,openmp=True,floatX=float32"
 else:
     os.environ["THEANO_FLAGS"] = "mode=FAST_RUN,device=cuda0,floatX=float32"
-
 print(os.environ["THEANO_FLAGS"])
 
 import numpy as np
@@ -54,29 +56,24 @@ options['dropout_mc'] = True
 options['batch_size'] = 350000
 options['mini_batch_size'] = 2048
 
-# Select an experiment name to store net weights and segmentation masks
-options['experiment'] = 'exp_dropoutMC_' + test_site
-
+# set an experiment name to store net weights and segmentation masks
+options['experiment'] = 'noel_deepFCD_dropoutMC_' + test_site
 print("experiment: {}".format(options['experiment']))
 spt.setproctitle(options['experiment'])
 
-options['model_dir'] = '/host/silius/local_raid/ravnoor/01_Projects/55_Bayesian_DeepLesion_LoSo/models'
-if hostname.startswith("pandarus"):
-    options['hdf5_data_dir'] = '/host/pandarus/local_raid/ravnoor/data/hdf5'
-elif hostname.startswith("hamlet"):
-    options['hdf5_data_dir'] = '/host/hamlet/local_raid/data/ravnoorX/data/hdf5'
-else:
-    options['hdf5_data_dir'] = '/host/silius/local_raid/ravnoor/01_Projects/55_Bayesian_DeepLesion_LoSo/data/hdf5'
+options['main_dir'] = sys.argv[2]
+options['model_dir'] = os.path.join(options['main_dir'], 'models')
+options['hdf5_data_dir'] = os.path.join(options['main_dir'], 'data', 'hdf5')
 
 sensitivity = 0
 perf = {}
 
-options['train_folder'] = '/host/silius/local_raid/ravnoor/01_Projects/55_Bayesian_DeepLesion_LoSo/data/'
-options['test_folder'] = '/host/silius/local_raid/ravnoor/01_Projects/55_Bayesian_DeepLesion_LoSo/data/'
+options['train_folder'] = os.path.join(options['main_dir'], 'data')
+options['test_folder'] = os.path.join(options['main_dir'], 'data')
 
-datafile = '/host/silius/local_raid/ravnoor/01_Projects/55_Bayesian_DeepLesion_LoSo/src/data_site_scanner_labels.xlsx'
+datafile = '../../examples/data-split-leave-one-site-out.csv'
 
-train, test, folds = partition_leave_one_site_out(datafile = datafile, test_site = test_site)
+train, test, folds = partition_leave_one_site_out(datafile=datafile, test_site=test_site)
 
 options['load_checkpoint_1'] = False
 options['load_checkpoint_2'] = False
@@ -105,7 +102,7 @@ test_labels = {f: os.path.join(options['train_folder'], 'lesion_labels', f+y_nam
 # --------------------------------------------------
 options['weight_paths'] = os.path.join(options['model_dir'], options['experiment'])
 
-model = None  # Clearing the CNN.
+model = None  # clear the CNN
 
 model = off_the_shelf_model(options)
 
@@ -145,18 +142,12 @@ print("training or loading model time elapsed: ~ {} seconds".format(diff))
 # --------------------------------------------------
 # test the cascaded model
 # --------------------------------------------------
-
-# for scan in test_list:
-for _, scan in enumerate(tqdm(test_list, desc='serving predictions using the trained model')):
+for _, scan in enumerate(tqdm(test_list, desc='serving predictions using the trained model', colour='magenta')):
 
     t_data = {}
     t_data[scan] = test_data[scan]
 
-    # print(t_data)
-
-    # test_folder = os.path.join(options['test_folder'], 'predictions')
-    test_folder = '/host/silius/local_raid/ravnoor/01_Projects/55_Bayesian_DeepLesion_LoSo/data/predictions'
-    options['pred_folder'] = os.path.join(test_folder, options['experiment'], scan)
+    options['pred_folder'] = os.path.join(options['test_folder'], 'predictions', options['experiment'], scan)
 
     pred_mean_fname = os.path.join(options['pred_folder'], options['experiment'] + '_prob_mean_1.nii.gz')
     pred_var_fname = os.path.join(options['pred_folder'], options['experiment'] + '_prob_var_1.nii.gz')
@@ -166,10 +157,7 @@ for _, scan in enumerate(tqdm(test_list, desc='serving predictions using the tra
         continue
 
     if not os.path.exists(options['pred_folder']):
-        # os.path.join(test_folder, options['experiment'])
         os.mkdir(options['pred_folder'])
-        # os.mkdir(os.path.join(test_folder, options['experiment']))
-        # os.mkdir(os.path.join(test_folder, options['experiment'], scan))
 
     options['test_name'] = scan + '_' + options['experiment'] + '.nii.gz'
     options['test_scan'] = scan
@@ -181,7 +169,8 @@ for _, scan in enumerate(tqdm(test_list, desc='serving predictions using the tra
     print("testing the model for scan: {} ".format(scan))
     print('-'*80)
 
-    test0, test1, test2, lpred, count = test_model(model, t_data, options)   # test0: prediction/stage1 | test1: pred/stage2 | test2: morphological processing + clustered | lpred: predicted label only | count: # false positives
+    # test0: prediction/stage1 | test1: pred/stage2 | test2: morphological processing + clustered | lpred: predicted label only | count: # false positives
+    test0, test1, test2, lpred, count = test_model(model, t_data, options) 
 
     y_true = True
     if y_true:
@@ -210,7 +199,7 @@ for _, scan in enumerate(tqdm(test_list, desc='serving predictions using the tra
             sensitivity += 1
 
 if y_true:
-    csv_name = test_folder+'/'+'results_tbin_'+str(options['t_bin'])+'_lmin_'+str(options['l_min'])+'_'+str(options['experiment'])+'.csv'
+    csv_name = os.path.join(options['test_folder'], 'predictions')+'/'+'results_tbin_'+str(options['t_bin'])+'_lmin_'+str(options['l_min'])+'_'+str(options['experiment'])+'.csv'
     df = pd.DataFrame(perf)
     df = df.transpose()
     df.to_csv(csv_name)
