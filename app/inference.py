@@ -13,7 +13,7 @@ from tqdm import tqdm
 
 os.environ["KERAS_BACKEND"] = "theano"
 
-options['cuda'] = sys.argv[1] # flag using gpu 1 or 2
+options['cuda'] = sys.argv[4] # flag using gpu 1 or 2
 if options['cuda'].startswith('cuda1'):
     os.environ["THEANO_FLAGS"] = "mode=FAST_RUN,device=cuda1,floatX=float32"
 elif options['cuda'].startswith('cpu'):
@@ -31,6 +31,43 @@ from keras.models import load_model
 from keras import backend as K
 from utils.metrics import *
 from utils.base import *
+
+# deepMask imports
+# sys.path.append("/host/hamlet/local_raid/data/ravnoor/02_docker/deepMask/app")
+import torch
+from mo_dots import Data
+from deepMask.utils.data import *
+from deepMask.utils.deepmask import *
+from deepMask.utils.image_processing import noelImageProcessor
+import deepMask.vnet as vnet
+
+# configuration
+args = Data()
+args.outdir = '/host/hamlet/local_raid/data/ravnoor/sandbox/' + str(sys.argv[1])
+args.seed = 666
+cwd = os.path.dirname(__file__)
+# trained weights based on manually corrected masks from
+# 153 patients with cortical malformations
+args.inference = os.path.join(cwd, 'deepMask/weights', 'vnet_masker_model_best.pth.tar')
+# resize all input images to this resolution matching training data
+args.resize = (160,160,160)
+args.use_gpu = False
+args.cuda = torch.cuda.is_available() and args.use_gpu
+torch.manual_seed(args.seed)
+args.device_ids = list(range(torch.cuda.device_count()))
+if args.cuda:
+    torch.cuda.manual_seed(args.seed)
+    print("build vnet, using GPU")
+else:
+    print("build vnet, using CPU")
+model = vnet.build_model(args)
+template = os.path.join(cwd, 'deepMask/template', 'mni_icbm152_t1_tal_nlin_sym_09a.nii.gz')
+
+args.id = sys.argv[1]
+args.t1 = os.path.join(args.outdir, sys.argv[2])
+args.t2 = os.path.join(args.outdir, sys.argv[3])
+args.output_suffix = '_brain_final.nii.gz'
+noelImageProcessor(id=args.id, t1=args.t1, t2=args.t2, output_suffix=args.output_suffix, output_dir=args.outdir, template=template, usen3=True, args=args, model=model, preprocess=True).pipeline()
 
 K.set_image_dim_ordering('th')
 K.set_image_data_format('channels_first')  # TH dimension ordering in this code
@@ -73,31 +110,27 @@ print(model[1].summary())
 # --------------------------------------------------
 # test the cascaded model
 # --------------------------------------------------
-print('-'*70)
-print("testing new patient")
-print('-'*70)
-
-# test controls
-options['test_folder'] = sys.argv[5]
-tfolder = options['test_folder']
+options['test_folder'] = '/host/hamlet/local_raid/data/ravnoor/sandbox/'
 
 # test_list = ['mcd_0468_1']
-test_list = [sys.argv[2]]
-t1_file = sys.argv[3]
-t2_file = sys.argv[4]
+test_list = [args.id]
+# t1_file = sys.argv[3]
+# t2_file = sys.argv[4]
+t1_file = os.path.join(args.outdir, args.id + '_t1' + args.output_suffix)
+t2_file = os.path.join(args.outdir, args.id + '_t2' + args.output_suffix)
 files = [t1_file, t2_file]
 # files = {}
 # files['T1'], files['FLAIR'] = str(t1_file), t2_file
 test_data = {}
 # test_data = {f: {m: os.path.join(tfolder, f, m+'_stripped.nii.gz') for m in modalities} for f in test_list}
-test_data = {f: {m: os.path.join(tfolder, f, n) for m, n in zip(modalities, files)} for f in test_list}
+test_data = {f: {m: os.path.join(options['test_folder'], f, n) for m, n in zip(modalities, files)} for f in test_list}
 
 for _, scan in enumerate(tqdm(test_list, desc='serving predictions using the trained model', colour='blue')):
     t_data = {}
     t_data[scan] = test_data[scan]
+    print(t_data[scan])
 
-    test_folder = tfolder
-    options['pred_folder'] = os.path.join(test_folder, scan, options['experiment'])
+    options['pred_folder'] = os.path.join(options['test_folder'], scan, options['experiment'])
     if not os.path.exists(options['pred_folder']):
         os.mkdir(options['pred_folder'])
 
