@@ -15,7 +15,7 @@ RUN wget --quiet https://repo.anaconda.com/miniconda/Miniconda3-py37_4.9.2-Linux
  && /bin/bash Miniconda3-py37_4.9.2-Linux-x86_64.sh -b -p /opt/conda \
  && rm Miniconda3-py37_4.9.2-Linux-x86_64.sh
 
-RUN conda install --yes Theano=1.0.4 keras=2.2.4 -c conda-forge
+RUN conda install --yes Theano=1.0.4 keras=2.2.4 -c conda-forge && conda install pytorch torchvision torchaudio cpuonly -c pytorch
 
 COPY app/ /app/
 
