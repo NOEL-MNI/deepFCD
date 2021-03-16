@@ -13,7 +13,7 @@ from tqdm import tqdm
 
 os.environ["KERAS_BACKEND"] = "theano"
 
-options['cuda'] = sys.argv[4] # flag using gpu 1 or 2
+options['cuda'] = sys.argv[5] # flag using gpu 1 or 2
 if options['cuda'].startswith('cuda1'):
     os.environ["THEANO_FLAGS"] = "mode=FAST_RUN,device=cuda1,floatX=float32"
 elif options['cuda'].startswith('cpu'):
@@ -36,19 +36,19 @@ from utils.base import *
 # sys.path.append("/host/hamlet/local_raid/data/ravnoor/02_docker/deepMask/app")
 import torch
 from mo_dots import Data
-from deepMask.utils.data import *
-from deepMask.utils.deepmask import *
-from deepMask.utils.image_processing import noelImageProcessor
-import deepMask.vnet as vnet
+from deepMask.app.utils.data import *
+from deepMask.app.utils.deepmask import *
+from deepMask.app.utils.image_processing import noelImageProcessor
+import deepMask.app.vnet as vnet
 
 # configuration
 args = Data()
-args.outdir = '/host/hamlet/local_raid/data/ravnoor/sandbox/' + str(sys.argv[1])
+args.outdir = sys.argv[4] + str(sys.argv[1])
 args.seed = 666
 cwd = os.path.dirname(__file__)
 # trained weights based on manually corrected masks from
 # 153 patients with cortical malformations
-args.inference = os.path.join(cwd, 'deepMask/weights', 'vnet_masker_model_best.pth.tar')
+args.inference = os.path.join(cwd, 'deepMask/app/weights', 'vnet_masker_model_best.pth.tar')
 # resize all input images to this resolution matching training data
 args.resize = (160,160,160)
 args.use_gpu = False
@@ -61,7 +61,7 @@ if args.cuda:
 else:
     print("build vnet, using CPU")
 model = vnet.build_model(args)
-template = os.path.join(cwd, 'deepMask/template', 'mni_icbm152_t1_tal_nlin_sym_09a.nii.gz')
+template = os.path.join(cwd, 'deepMask/app/template', 'mni_icbm152_t1_tal_nlin_sym_09a.nii.gz')
 
 args.id = sys.argv[1]
 args.t1 = os.path.join(args.outdir, sys.argv[2])
@@ -82,10 +82,10 @@ options['batch_size'] = 350000
 options['mini_batch_size'] = 2048
 options['load_checkpoint_1'] = True
 options['load_checkpoint_2'] = True
-options['model_dir'] = '/tmp/models'
 
 # trained model weights based on 148 histologically-verified FCD subjects
-options['weight_paths'] = './weights'
+options['test_folder'] = sys.argv[4]
+options['weight_paths'] = os.path.join(cwd, 'weights')
 options['experiment'] = 'noel_deepFCD_dropoutMC'
 print("experiment: {}".format(options['experiment']))
 spt.setproctitle(options['experiment'])
@@ -110,8 +110,6 @@ print(model[1].summary())
 # --------------------------------------------------
 # test the cascaded model
 # --------------------------------------------------
-options['test_folder'] = '/host/hamlet/local_raid/data/ravnoor/sandbox/'
-
 # test_list = ['mcd_0468_1']
 test_list = [args.id]
 # t1_file = sys.argv[3]
@@ -128,7 +126,6 @@ test_data = {f: {m: os.path.join(options['test_folder'], f, n) for m, n in zip(m
 for _, scan in enumerate(tqdm(test_list, desc='serving predictions using the trained model', colour='blue')):
     t_data = {}
     t_data[scan] = test_data[scan]
-    print(t_data[scan])
 
     options['pred_folder'] = os.path.join(options['test_folder'], scan, options['experiment'])
     if not os.path.exists(options['pred_folder']):
