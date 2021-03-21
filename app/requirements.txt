@@ -1,6 +1,6 @@
 antspyx
 argparse
-h5py
+h5py==2.10.0
 matplotlib
 mo_dots
 nibabel
