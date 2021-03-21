@@ -57,6 +57,7 @@ conda activate deepFCD
 
 # install dependencies using Conda/pip
 conda install --yes Theano=1.0.4 keras=2.2.4 -c conda-forge
+conda install --yes pytorch torchvision torchaudio cpuonly -c pytorch
 python -m pip install -r app/requirements.txt
 ```
 
