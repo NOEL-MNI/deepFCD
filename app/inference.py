@@ -33,7 +33,6 @@ from utils.metrics import *
 from utils.base import *
 
 # deepMask imports
-# sys.path.append("/host/hamlet/local_raid/data/ravnoor/02_docker/deepMask/app")
 import torch
 from mo_dots import Data
 from deepMask.app.utils.data import *
@@ -43,7 +42,7 @@ import deepMask.app.vnet as vnet
 
 # configuration
 args = Data()
-args.outdir = sys.argv[4] + str(sys.argv[1])
+args.outdir = os.path.join(sys.argv[4], str(sys.argv[1]))
 args.seed = 666
 cwd = os.path.dirname(__file__)
 # trained weights based on manually corrected masks from
