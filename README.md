@@ -4,7 +4,7 @@
 
 <p align="center">
       <a href="https://www.python.org/">
-        <img src="https://img.shields.io/badge/Python-3.6-ff69b4.svg" /></a>
+        <img src="https://img.shields.io/badge/Python-3.7-ff69b4.svg" /></a>
       <a href= "https://keras.io/">
         <img src="https://img.shields.io/badge/Keras-2.2.4-2BAF2B.svg" /></a>
       <a href= "https://github.com/Theano/Theano">
@@ -29,15 +29,16 @@
   publisher = {Americal Academy of Neurology},
   journal = {Neurology},
   howpublished = {\url{https://github.com/NOEL-MNI/deepFCD}},
-  doi = {10.5281/zenodo.4521706}
+  code = {10.5281/zenodo.4521706}
+  code = {tba}
 }
 ```
 
 ## Pre-requisites
 ```console
 ###TODO: Update version requirements
-0. Miniconda3
-1. Python == 3.6
+0. Anaconda Python Environment
+1. Python == 3.7
 2. Keras == 2.2.4
 3. Theano == 1.0.4
 5. app/requirements.txt
@@ -51,7 +52,7 @@ wget https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.sh -O ~/
 bash ~/miniconda.sh -b -p $HOME/miniconda
 
 # create and activate a Conda environment
-conda create -n deepFCD python=3.6
+conda create -n deepFCD python=3.7
 conda activate deepFCD
 
 # install dependencies using Conda/pip
@@ -64,15 +65,17 @@ python -m pip install -r app/requirements.txt
 ###TODO: Training and Inference
 ### Docker
 ```console
-docker run -it -v /tmp:/tmp docker.pkg.github.com/noel-mni/deepfcd/app:latest
-                                                                  /app/inference.py \
-                                                                  $PATIENT_ID \
-                                                                  /tmp/T1.nii.gz /tmp/FLAIR.nii.gz \
-                                                                  /tmp
+docker run --rm -it --init \
+    --gpus=all
+    --user="$(id -u):$(id -g)" \
+    --volume="$PWD:/io" \
+    noelmni/deep-fcd:latest
+    inference.py $PATIENT_ID $T1.nii.gz $FLAIR.nii.gz $PWD
 ```
 
 ## License
 <a href= "https://opensource.org/licenses/BSD-3-Clause"><img src="https://img.shields.io/badge/License-BSD%203--Clause-blue.svg" /></a>
-```Shell
+
+```console
 Copyright 2021 Neuroimaging of Epilepsy Laboratory, McGill University
 ```
