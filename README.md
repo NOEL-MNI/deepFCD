@@ -56,8 +56,10 @@ conda create -n deepFCD python=3.7
 conda activate deepFCD
 
 # install dependencies using Conda/pip
+# for deepFCD
 conda install --yes Theano=1.0.4 keras=2.2.4 -c conda-forge
-conda install --yes pytorch torchvision torchaudio cpuonly -c pytorch
+# for deepMask
+conda install --yes pytorch torchvision cpuonly -c pytorch
 python -m pip install -r app/requirements.txt
 ```
 
@@ -70,8 +72,8 @@ docker run --rm -it --init \
     --gpus=all
     --user="$(id -u):$(id -g)" \
     --volume="$PWD:/io" \
-    noelmni/deep-fcd:latest
-    inference.py $PATIENT_ID $T1.nii.gz $FLAIR.nii.gz $PWD
+    noelmni/deep-fcd:latest \
+    /app/inference.py $PATIENT_ID $T1.nii.gz $FLAIR.nii.gz /io
 ```
 
 ## License
