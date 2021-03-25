@@ -30,18 +30,20 @@
   journal = {Neurology},
   howpublished = {\url{https://github.com/NOEL-MNI/deepFCD}},
   code = {10.5281/zenodo.4521706}
-  code = {tba}
+  doi = {tba}
 }
 ```
 
 ## Pre-requisites
 ```console
-###TODO: Update version requirements
 0. Anaconda Python Environment
 1. Python == 3.7
 2. Keras == 2.2.4
 3. Theano == 1.0.4
-5. app/requirements.txt
+4. ANTsPy == 0.2.7 (for MRI preprocessing)
+5. PyTorch == 1.4.0 (for deepMask)
+6. h5py == 2.10.0
+7. app/requirements.txt
 ```
 
 ## Installation
