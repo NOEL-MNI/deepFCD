@@ -68,7 +68,7 @@ python -m pip install -r app/requirements.txt
 
 ## Usage
 ### TODO: Training routine
-### Docker
+### Inference using Docker
 ```console
 docker run --rm -it --init \
     --gpus=all
