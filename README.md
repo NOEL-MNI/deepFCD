@@ -67,7 +67,7 @@ python -m pip install -r app/requirements.txt
 
 
 ## Usage
-###TODO: Training and Inference
+### TODO: Training routine
 ### Docker
 ```console
 docker run --rm -it --init \
