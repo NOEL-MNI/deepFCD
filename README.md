@@ -22,15 +22,14 @@
 
 ### Please cite:
 ```TeX
-@misc{Gill2021,
-  author = {Gill RS, et al},
+@article{GillFCD2021,
   title = {Multicenter Validated Detection of Focal Cortical Dysplasia using Deep Learning},
+  author = {Gill, Ravnoor Singh and Lee, Hyo-Min and Caldairou, Benoit and Hong, Seok-Jun and Barba, Carmen and Deleo, Francesco and D'Incerti, Ludovico and Coelho, Vanessa Cristina Mendes and Lenge, Matteo and Semmelroch, Mira and others},
+  journal = {Neurology},
   year = {2021},
   publisher = {Americal Academy of Neurology},
-  journal = {Neurology},
-  howpublished = {\url{https://github.com/NOEL-MNI/deepFCD}},
-  code = {10.5281/zenodo.4521706}
-  doi = {tba}
+  code = {\url{https://github.com/NOEL-MNI/deepFCD}},
+  doi = {https://doi.org/10.1212/WNL.0000000000012698}
 }
 ```
 
@@ -43,7 +42,7 @@
 4. ANTsPy == 0.2.7 (for MRI preprocessing)
 5. PyTorch == 1.4.0 (for deepMask)
 6. h5py == 2.10.0
-7. app/requirements.txt
++ app/requirements.txt
 ```
 
 ## Installation
