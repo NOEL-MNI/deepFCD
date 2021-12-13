@@ -34,7 +34,7 @@
 ```
 
 ## Pre-requisites
-```console
+```bash
 0. Anaconda Python Environment
 1. Python == 3.7
 2. Keras == 2.2.4
@@ -47,7 +47,7 @@
 
 ## Installation
 
-```console
+```bash
 # install Miniconda3
 wget https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.sh -O ~/miniconda.sh
 bash ~/miniconda.sh -b -p $HOME/miniconda
@@ -67,14 +67,28 @@ python -m pip install -r app/requirements.txt
 
 ## Usage
 ### TODO: Training routine
+
+### Inference
+```bash
+chmod +x ./app/inference.py # make the script executable -ensure you have the requisite permissions
+./app/inference.py     \ # the script to perform inference on the multimodal MRI images
+    ${PATIENT_ID}      \ # prefix for the filenames; for example: FCD_001 (needed for outputs only)
+    ${T1_IMAGE}        \ # T1-weighted image; for example: FCD_001_t1.nii.gz or t1.nii.gz [T1 is specified before FLAIR - order is important]
+    ${FLAIR_IMAGE}     \ # T2-weighted FLAIR image; for example: FCD_001_t2.nii.gz or flair.nii.gz [T1 is specified before FLAIR - order is important]
+    ${INPUT_DIRECTORY}   # input/output directory
+```
 ### Inference using Docker
-```console
+```bash
 docker run --rm -it --init \
-    --gpus=all
-    --user="$(id -u):$(id -g)" \
-    --volume="$PWD:/io" \
-    noelmni/deep-fcd:latest \
-    /app/inference.py $PATIENT_ID $T1.nii.gz $FLAIR.nii.gz /io
+    --gpus=all                 \ # expose the host GPUs to the guest docker container
+    --user="$(id -u):$(id -g)" \ # map user permissions appropriately
+    --volume="$PWD:/io"        \ # $PWD refers to the present working directory containing the input images, can be modified to a local host directory
+    noelmni/deep-fcd:latest    \ # docker image containing all the necessary software dependencies
+    /app/inference.py  \ # the script to perform inference on the multimodal MRI images
+    ${PATIENT_ID}      \ # prefix for the filenames; for example: FCD_001 (needed for outputs only)
+    ${T1_IMAGE}        \ # T1-weighted image; for example: FCD_001_t1.nii.gz or t1.nii.gz [T1 is specified before FLAIR - order is important]
+    ${FLAIR_IMAGE}     \ # T2-weighted FLAIR image; for example: FCD_001_t2.nii.gz or flair.nii.gz [T1 is specified before FLAIR - order is important]
+    /io                  # input/output directory within the container mapped to ${PWD} [ DO NOT MODIFY]
 ```
 
 ## License
