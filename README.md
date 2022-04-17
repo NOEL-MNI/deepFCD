@@ -1,6 +1,7 @@
-<h1 align="center">
-  <b>Multicenter Validated Detection of Focal Cortical Dysplasia using Deep Learning</b><br>
-</h1>
+<h2 align="center">
+  <b>Code repository for</b>:
+  Multicenter Validated Detection of Focal Cortical Dysplasia using Deep Learning<br>
+</h2>
 
 <p align="center">
       <a href="https://www.python.org/">
