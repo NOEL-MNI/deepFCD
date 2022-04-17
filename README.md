@@ -36,10 +36,10 @@
 ## Pre-requisites
 ```bash
 0. Anaconda Python Environment
-1. Python == 3.7
+1. Python == 3.7.x
 2. Keras == 2.2.4
 3. Theano == 1.0.4
-4. ANTsPy == 0.2.7 (for MRI preprocessing)
+4. ANTsPy == 0.3.2 (for MRI preprocessing)
 5. PyTorch == 1.4.0 (for deepMask)
 6. h5py == 2.10.0
 + app/requirements.txt
@@ -56,12 +56,9 @@ bash ~/miniconda.sh -b -p $HOME/miniconda
 conda create -n deepFCD python=3.7
 conda activate deepFCD
 
-# install dependencies using Conda/pip
-# for deepFCD
-conda install --yes Theano=1.0.4 keras=2.2.4 -c conda-forge
-# for deepMask
-conda install --yes pytorch torchvision cpuonly -c pytorch
-python -m pip install -r app/requirements.txt
+# install dependencies using pip
+python -m pip install -r app/requirements.txt --find-links https://download.pytorch.org/whl/torch_stable.html
+conda install -c conda-forge pygpu=0.7.6
 ```
 
 
