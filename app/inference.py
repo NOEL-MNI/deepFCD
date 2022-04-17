@@ -44,30 +44,41 @@ import deepMask.app.vnet as vnet
 args = Data()
 args.outdir = os.path.join(sys.argv[4], str(sys.argv[1]))
 args.seed = 666
-cwd = os.path.dirname(__file__)
-# trained weights based on manually corrected masks from
-# 153 patients with cortical malformations
-args.inference = os.path.join(cwd, 'deepMask/app/weights', 'vnet_masker_model_best.pth.tar')
-# resize all input images to this resolution matching training data
-args.resize = (160,160,160)
-args.use_gpu = False
-args.cuda = torch.cuda.is_available() and args.use_gpu
-torch.manual_seed(args.seed)
-args.device_ids = list(range(torch.cuda.device_count()))
-if args.cuda:
-    torch.cuda.manual_seed(args.seed)
-    print("build vnet, using GPU")
-else:
-    print("build vnet, using CPU")
-model = vnet.build_model(args)
-template = os.path.join(cwd, 'deepMask/app/template', 'mni_icbm152_t1_tal_nlin_sym_09a.nii.gz')
-
 args.id = sys.argv[1]
 args.t1 = os.path.join(args.outdir, sys.argv[2])
 args.t2 = os.path.join(args.outdir, sys.argv[3])
-args.output_suffix = '_brain_final.nii.gz'
-noelImageProcessor(id=args.id, t1=args.t1, t2=args.t2, output_suffix=args.output_suffix, output_dir=args.outdir, template=template, usen3=True, args=args, model=model, preprocess=True).pipeline()
+cwd = os.path.dirname(__file__)
 
+if args.brain_masking:
+    # trained weights based on manually corrected masks from
+    # 153 patients with cortical malformations
+    args.inference = os.path.join(cwd, 'deepMask/app/weights', 'vnet_masker_model_best.pth.tar')
+    # resize all input images to this resolution matching training data
+    args.resize = (160,160,160)
+    args.use_gpu = False
+    args.preprocess = True
+    args.cuda = torch.cuda.is_available() and args.use_gpu
+    torch.manual_seed(args.seed)
+    args.device_ids = list(range(torch.cuda.device_count()))
+    if args.cuda:
+        torch.cuda.manual_seed(args.seed)
+        print("build vnet, using GPU")
+    else:
+        print("build vnet, using CPU")
+    model = vnet.build_model(args)
+    template = os.path.join(cwd, 'deepMask/app/template', 'mni_icbm152_t1_tal_nlin_sym_09a.nii.gz')
+
+    # MRI pre-processing configuration
+    args.output_suffix = '_brain_final.nii.gz'
+    
+    noelImageProcessor(id=args.id, t1=args.t1, t2=args.t2, output_suffix=args.output_suffix, output_dir=args.outdir, template=template, usen3=True, args=args, model=model, preprocess=args.preprocess).pipeline()
+else:
+    args.output_suffix = '.nii.gz'
+    args.t1 = os.path.join(args.outdir, sys.argv[2])
+    args.t2 = os.path.join(args.outdir, sys.argv[3])
+    print("Skipping image preprocessing and brain masking, presumably images are co-registered, bias-corrected, and skull-stripped")
+
+# deepFCD configuration
 K.set_image_dim_ordering('th')
 K.set_image_data_format('channels_first')  # TH dimension ordering in this code
 
@@ -113,9 +124,10 @@ print(model[1].summary())
 test_list = [args.id]
 # t1_file = sys.argv[3]
 # t2_file = sys.argv[4]
-t1_file = os.path.join(args.outdir, args.id + '_t1' + args.output_suffix)
-t2_file = os.path.join(args.outdir, args.id + '_t2' + args.output_suffix)
-files = [t1_file, t2_file]
+# t1_file = os.path.join(args.outdir, args.id + '_t1' + args.output_suffix)
+# t2_file = os.path.join(args.outdir, args.id + '_t2' + args.output_suffix)
+# files = [t1_file, t2_file]
+files = [args.t1, args.t2]
 # files = {}
 # files['T1'], files['FLAIR'] = str(t1_file), t2_file
 test_data = {}
