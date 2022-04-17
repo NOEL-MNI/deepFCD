@@ -63,18 +63,34 @@ conda install -c conda-forge pygpu=0.7.6
 
 
 ## Usage
-### TODO: Training routine
 
-### Inference
+### 1. Directory Organization
+The assumed organization of the directories is specified below:
+```bash
+${IO_DIRECTORY}
+└── ${PATIENT_ID}/              # [this patient-specific directory is contained within ${IO_DIRECTORY}]
+    ├── noel_deepFCD_dropoutMC  # [deepFCD output images]
+    │   ├── ${PATIENT_ID}_noel_deepFCD_dropoutMC_prob_mean_0.nii.gz # [mean PROBABILITY image from CNN-1]
+    │   ├── ${PATIENT_ID}_noel_deepFCD_dropoutMC_prob_mean_1.nii.gz # [mean PROBABILITY image from CNN-2]
+    │   ├── ${PATIENT_ID}_noel_deepFCD_dropoutMC_prob_var_0.nii.gz  # [mean UNCERTAINTY image from CNN-1]
+    │   └── ${PATIENT_ID}_noel_deepFCD_dropoutMC_prob_var_1.nii.gz  # [mean UNCERTAINTY image from CNN-2]
+    ├── ${T1_IMAGE}.nii.gz
+    └── ${FLAIR_IMAGE}.nii.gz
+```
+
+### 2. Training routine [TODO]
+
+### 3.1 Inference
 ```bash
 chmod +x ./app/inference.py # make the script executable -ensure you have the requisite permissions
 ./app/inference.py     \ # the script to perform inference on the multimodal MRI images
     ${PATIENT_ID}      \ # prefix for the filenames; for example: FCD_001 (needed for outputs only)
     ${T1_IMAGE}        \ # T1-weighted image; for example: FCD_001_t1.nii.gz or t1.nii.gz [T1 is specified before FLAIR - order is important]
     ${FLAIR_IMAGE}     \ # T2-weighted FLAIR image; for example: FCD_001_t2.nii.gz or flair.nii.gz [T1 is specified before FLAIR - order is important]
-    ${INPUT_DIRECTORY}   # input/output directory
+    ${IO_DIRECTORY}    \ # input/output directory
+    cuda0                # toggle b/w CPU/GPU - string specifies CPU ('cpu') or GPU ID ('cudaX', where N is in the range (0,N), where N is the total number of installed GPUs)
 ```
-### Inference using Docker
+### 3.2 Inference using Docker
 ```bash
 docker run --rm -it --init \
     --gpus=all                 \ # expose the host GPUs to the guest docker container
@@ -85,7 +101,8 @@ docker run --rm -it --init \
     ${PATIENT_ID}      \ # prefix for the filenames; for example: FCD_001 (needed for outputs only)
     ${T1_IMAGE}        \ # T1-weighted image; for example: FCD_001_t1.nii.gz or t1.nii.gz [T1 is specified before FLAIR - order is important]
     ${FLAIR_IMAGE}     \ # T2-weighted FLAIR image; for example: FCD_001_t2.nii.gz or flair.nii.gz [T1 is specified before FLAIR - order is important]
-    /io                  # input/output directory within the container mapped to ${PWD} [ DO NOT MODIFY]
+    /io                \ # input/output directory within the container mapped to ${IO_DIRECTORY} or ${PWD} [ DO NOT MODIFY]
+    cuda0                # toggle b/w CPU/GPU - string specifies CPU ('cpu') or GPU ID ('cudaX', where N is in the range (0,N), where N is the total number of installed GPUs)
 ```
 
 ## License
