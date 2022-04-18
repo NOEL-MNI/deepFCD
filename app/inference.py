@@ -45,7 +45,8 @@ import deepMask.app.vnet as vnet
 args = Data()
 args.dir = sys.argv[4]
 args.id = sys.argv[1]
-args.brain_masking = False # set to True or any non-zero value for brain extraction or skull-removal
+args.brain_masking = True # set to True or any non-zero value for brain extraction or skull-removal, False otherwise
+args.preprocess = True # co-register T1 and T2 contrasts before brain extraction
 args.outdir = os.path.join(args.dir, args.id)
 args.seed = 666
 args.t1_fname = sys.argv[2]
@@ -61,7 +62,6 @@ if args.brain_masking:
     # resize all input images to this resolution matching training data
     args.resize = (160,160,160)
     args.use_gpu = False
-    args.preprocess = True
     args.cuda = torch.cuda.is_available() and args.use_gpu
     torch.manual_seed(args.seed)
     args.device_ids = list(range(torch.cuda.device_count()))
@@ -77,10 +77,10 @@ if args.brain_masking:
     args.output_suffix = '_brain_final.nii.gz'
     
     noelImageProcessor(id=args.id, t1=args.t1, t2=args.t2, output_suffix=args.output_suffix, output_dir=args.outdir, template=template, usen3=True, args=args, model=model, preprocess=args.preprocess).pipeline()
+
+    args.t1 = os.path.join(args.outdir, args.id + '_t1' + args.output_suffix)
+    args.t2 = os.path.join(args.outdir, args.id + '_t2' + args.output_suffix)
 else:
-    args.output_suffix = '.nii.gz'
-    args.t1 = os.path.join(args.outdir, args.t1_fname)
-    args.t2 = os.path.join(args.outdir, args.t2_fname)
     print("Skipping image preprocessing and brain masking, presumably images are co-registered, bias-corrected, and skull-stripped")
 
 # deepFCD configuration
