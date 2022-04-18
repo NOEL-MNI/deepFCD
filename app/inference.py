@@ -13,7 +13,8 @@ from tqdm import tqdm
 
 os.environ["KERAS_BACKEND"] = "theano"
 
-options['cuda'] = sys.argv[5] # flag using gpu 1 or 2
+# GPU/CPU options
+options['cuda'] = sys.argv[5] # cpu, cuda, cuda0, cuda1, or cudaX: flag using gpu 1 or 2
 if options['cuda'].startswith('cuda1'):
     os.environ["THEANO_FLAGS"] = "mode=FAST_RUN,device=cuda1,floatX=float32,dnn.enabled=False"
 elif options['cuda'].startswith('cpu'):
@@ -42,11 +43,15 @@ import deepMask.app.vnet as vnet
 
 # configuration
 args = Data()
-args.outdir = os.path.join(sys.argv[4], str(sys.argv[1]))
-args.seed = 666
+args.dir = sys.argv[4]
 args.id = sys.argv[1]
-args.t1 = os.path.join(args.outdir, sys.argv[2])
-args.t2 = os.path.join(args.outdir, sys.argv[3])
+args.brain_masking = False # set to True or any non-zero value for brain extraction or skull-removal
+args.outdir = os.path.join(args.dir, args.id)
+args.seed = 666
+args.t1_fname = sys.argv[2]
+args.t2_fname = sys.argv[3]
+args.t1 = os.path.join(args.outdir, args.t1_fname)
+args.t2 = os.path.join(args.outdir, args.t2_fname)
 cwd = os.path.dirname(__file__)
 
 if args.brain_masking:
@@ -74,8 +79,8 @@ if args.brain_masking:
     noelImageProcessor(id=args.id, t1=args.t1, t2=args.t2, output_suffix=args.output_suffix, output_dir=args.outdir, template=template, usen3=True, args=args, model=model, preprocess=args.preprocess).pipeline()
 else:
     args.output_suffix = '.nii.gz'
-    args.t1 = os.path.join(args.outdir, sys.argv[2])
-    args.t2 = os.path.join(args.outdir, sys.argv[3])
+    args.t1 = os.path.join(args.outdir, args.t1_fname)
+    args.t2 = os.path.join(args.outdir, args.t2_fname)
     print("Skipping image preprocessing and brain masking, presumably images are co-registered, bias-corrected, and skull-stripped")
 
 # deepFCD configuration
@@ -94,7 +99,7 @@ options['load_checkpoint_1'] = True
 options['load_checkpoint_2'] = True
 
 # trained model weights based on 148 histologically-verified FCD subjects
-options['test_folder'] = sys.argv[4]
+options['test_folder'] = args.dir
 options['weight_paths'] = os.path.join(cwd, 'weights')
 options['experiment'] = 'noel_deepFCD_dropoutMC'
 print("experiment: {}".format(options['experiment']))
@@ -122,16 +127,8 @@ print(model[1].summary())
 # --------------------------------------------------
 # test_list = ['mcd_0468_1']
 test_list = [args.id]
-# t1_file = sys.argv[3]
-# t2_file = sys.argv[4]
-# t1_file = os.path.join(args.outdir, args.id + '_t1' + args.output_suffix)
-# t2_file = os.path.join(args.outdir, args.id + '_t2' + args.output_suffix)
-# files = [t1_file, t2_file]
 files = [args.t1, args.t2]
-# files = {}
-# files['T1'], files['FLAIR'] = str(t1_file), t2_file
 test_data = {}
-# test_data = {f: {m: os.path.join(tfolder, f, m+'_stripped.nii.gz') for m in modalities} for f in test_list}
 test_data = {f: {m: os.path.join(options['test_folder'], f, n) for m, n in zip(modalities, files)} for f in test_list}
 
 for _, scan in enumerate(tqdm(test_list, desc='serving predictions using the trained model', colour='blue')):
