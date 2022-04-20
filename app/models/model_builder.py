@@ -1,11 +1,8 @@
-import os
-import numpy as np
 from keras.models import Model
-from keras.layers import Input, merge, Conv3D, MaxPooling3D, UpSampling3D, AveragePooling3D, core, Dropout, Dense, Lambda, Flatten, Activation
-from keras.layers.merge import add, concatenate
-from keras.layers.convolutional import MaxPooling3D, Conv3D, AveragePooling3D
+from keras.layers import Input, Conv3D, MaxPooling3D, Dropout, Flatten, Activation
+from keras.layers.convolutional import MaxPooling3D, Conv3D
 from keras.layers.normalization import BatchNormalization
-from keras.layers.advanced_activations import PReLU, LeakyReLU
+# from keras.layers.advanced_activations import PReLU, LeakyReLU
 
 from keras import backend as K
 K.set_image_dim_ordering('th')
