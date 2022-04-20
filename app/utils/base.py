@@ -34,8 +34,8 @@ def partition_leave_one_site_out(datafile=None, test_site=None):
     return train, test, folds
 
 
-def create_dataset(data_path, X, y):
-    f = h5py.File(data_path, 'w')
+def create_dataset(datapath, X, y):
+    f = h5py.File(datapath, 'w')
     # create dataset to store features
     X_dset = f.create_dataset('data', X.shape, dtype='f')
     X_dset[:] = X
@@ -43,6 +43,18 @@ def create_dataset(data_path, X, y):
     y_dset = f.create_dataset('labels', y.shape, dtype='i')
     y_dset[:] = y
     f.close()
+
+
+def load_dataset(datapath, options):
+    train_val_split = options['train_split']
+    n_patches = HDF5Matrix(datapath, 'labels').shape[0]
+    # get the train and validation patch indices
+    start, end = [0, int(n_patches * (1-train_val_split))], [int(n_patches * (1-train_val_split)), n_patches]
+    # extract the training dataset w/ labels
+    X, labels = HDF5Matrix(datapath, 'data', start=start[0], end=end[0]), HDF5Matrix(datapath, 'labels', start=start[0], end=end[0])
+    # extract the validation dataset w/ labels
+    X_val, y_val = HDF5Matrix(datapath, 'data',start=start[1], end=end[1]), HDF5Matrix(datapath, 'labels', start=start[1], end=end[1])
+    return X, labels, X_val, y_val
 
 
 def train_model(model, train_x_data, train_y_data, options):
@@ -92,10 +104,7 @@ def train_model(model, train_x_data, train_y_data, options):
         if os.path.isfile(datapath):
             print(datapath + " exists, loading now")
             # datapath = options['data_path']
-            n_patches = HDF5Matrix(datapath, 'labels').shape[0]
-            start, end = [0, int(n_patches * (1-options['train_split']))], [int(n_patches * (1-options['train_split'])), n_patches]
-            X, labels = HDF5Matrix(datapath, 'data', start=start[0], end=end[0]), HDF5Matrix(datapath, 'labels', start=start[0], end=end[0])
-            X_val, y_val = HDF5Matrix(datapath, 'data',start=start[1], end=end[1]), HDF5Matrix(datapath, 'labels', start=start[1], end=end[1])
+            X, labels, X_val, y_val = load_dataset(datapath, options)
             print( '\n\n' )
             print( '====> DNN1 // fitting model', '\n' )
             print( '====> # 3D training patches:', X.shape[0] ,'\n' )
@@ -149,10 +158,7 @@ def train_model(model, train_x_data, train_y_data, options):
                 print(datapath + " exists, loading now")
                 # datapath = options['data_path']
                 print( '====> DNN2 // loading training data from HDF5 dataset' )
-                n_patches = HDF5Matrix(datapath, 'labels').shape[0]
-                start, end = [0, int(n_patches * (1-options['train_split']))], [int(n_patches * (1-options['train_split'])), n_patches]
-                X, labels = HDF5Matrix(datapath, 'data', start=start[0], end=end[0]), HDF5Matrix(datapath, 'labels', start=start[0], end=end[0])
-                X_val, y_val = HDF5Matrix(datapath, 'data',start=start[1], end=end[1]), HDF5Matrix(datapath, 'labels', start=start[1], end=end[1])
+                X, labels, X_val, y_val = load_dataset(datapath, options)
                 print( '\n\n' )
                 print( '====> DNN2 // fitting model', '\n' )
                 print( '====> # 3D training patches:', X.shape[0] ,'\n' )
@@ -178,10 +184,7 @@ def train_model(model, train_x_data, train_y_data, options):
                 print(datapath + " exists, loading now")
                 # datapath = options['data_path']
                 print( '====> DNN2 // loading training data from HDF5 dataset' )
-                n_patches = HDF5Matrix(datapath, 'labels').shape[0]
-                start, end = [0, int(n_patches * (1-options['train_split']))], [int(n_patches * (1-options['train_split'])), n_patches]
-                X, labels = HDF5Matrix(datapath, 'data', start=start[0], end=end[0]), HDF5Matrix(datapath, 'labels', start=start[0], end=end[0])
-                X_val, y_val = HDF5Matrix(datapath, 'data',start=start[1], end=end[1]), HDF5Matrix(datapath, 'labels', start=start[1], end=end[1])
+                X, labels, X_val, y_val = load_dataset(datapath, options)
                 print( '\n\n' )
                 print( '====> DNN2 // fitting model', '\n' )
                 print( '====> # 3D training patches:', X.shape[0] ,'\n' )
