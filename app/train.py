@@ -32,8 +32,6 @@ import setproctitle as spt
 from tqdm import tqdm
 
 from models.noel_models_keras import *
-from keras.utils import plot_model
-from keras.models import load_model
 from keras import backend as K
 
 from utils.metrics import *
