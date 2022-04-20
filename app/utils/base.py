@@ -51,10 +51,10 @@ def load_dataset(datapath, options):
     # get the train and validation patch indices
     start, end = [0, int(n_patches * (1-train_val_split))], [int(n_patches * (1-train_val_split)), n_patches]
     # extract the training dataset w/ labels
-    X, labels = HDF5Matrix(datapath, 'data', start=start[0], end=end[0]), HDF5Matrix(datapath, 'labels', start=start[0], end=end[0])
+    X, y = HDF5Matrix(datapath, 'data', start=start[0], end=end[0]), HDF5Matrix(datapath, 'labels', start=start[0], end=end[0])
     # extract the validation dataset w/ labels
     X_val, y_val = HDF5Matrix(datapath, 'data',start=start[1], end=end[1]), HDF5Matrix(datapath, 'labels', start=start[1], end=end[1])
-    return X, labels, X_val, y_val
+    return X, y, X_val, y_val
 
 
 def train_model(model, train_x_data, train_y_data, options):
@@ -105,7 +105,7 @@ def train_model(model, train_x_data, train_y_data, options):
         if os.path.isfile(datapath):
             print(datapath + " exists, loading now")
             # datapath = options['data_path']
-            X, labels, X_val, y_val = load_dataset(datapath, options)
+            X, y, X_val, y_val = load_dataset(datapath, options)
             print( '\n\n' )
             print( '====> DNN1 // fitting model', '\n' )
             print( '====> # 3D training patches:', X.shape[0] ,'\n' )
@@ -113,15 +113,15 @@ def train_model(model, train_x_data, train_y_data, options):
             print( '====> # modalities:', (X.shape[1]) ,'\n' )
 
             model[0].fit(
-                        X, labels, batch_size=batch_size, epochs=options['max_epochs_1'],
+                        X, y, batch_size=batch_size, epochs=options['max_epochs_1'],
                         verbose=2,shuffle="batch", validation_data=(X_val,y_val),
                         callbacks=[early_stopping_monitor, model_checkpoint, csv_logger, json_logging_callback]
                         )
         else:
-            X, Y = load_training_data(train_x_data, train_y_data, options, subcort_masks=None)
-            labels = to_categorical(Y, num_classes=2)
+            X, labels = load_training_data(train_x_data, train_y_data, options, subcort_masks=None)
+            y = to_categorical(labels, num_classes=2)
             print("\n hdf5 dataset is being created: {}".format(datapath))
-            create_dataset(datapath, X, labels)
+            create_dataset(datapath, X, y)
             print( '\n\n' )
             print( '====> DNN1 // fitting model', '\n' )
             print( '====> # 3D training patches:', X.shape[0] ,'\n' )
@@ -129,7 +129,7 @@ def train_model(model, train_x_data, train_y_data, options):
             print( '====> # modalities:', (X.shape[1]) ,'\n' )
 
             model[0].fit(
-                        X, labels, batch_size=batch_size, epochs=options['max_epochs_1'],
+                        X, y, batch_size=batch_size, epochs=options['max_epochs_1'],
                         verbose=2, shuffle=True, validation_split=options['train_split'],
                         callbacks=[early_stopping_monitor, model_checkpoint, csv_logger, json_logging_callback]
                         )
@@ -161,22 +161,22 @@ def train_model(model, train_x_data, train_y_data, options):
                 print(datapath + " exists, loading now")
                 # datapath = options['data_path']
                 print( '====> DNN2 // loading training data from HDF5 dataset' )
-                X, labels, X_val, y_val = load_dataset(datapath, options)
+                X, y, X_val, y_val = load_dataset(datapath, options)
                 print( '\n\n' )
                 print( '====> DNN2 // fitting model', '\n' )
                 print( '====> # 3D training patches:', X.shape[0] ,'\n' )
                 print( '====> # patch size:', (X.shape[2],X.shape[3],X.shape[4]) ,'\n' )
                 print( '====> # modalities:', (X.shape[1]) ,'\n' )
                 model[1].fit(
-                            X, labels, batch_size=batch_size, initial_epoch=options['initial_epoch_2'],
+                            X, y, batch_size=batch_size, initial_epoch=options['initial_epoch_2'],
                             epochs=options['max_epochs_2'], verbose=2, shuffle="batch", validation_data=(X_val,y_val),
                             callbacks=[early_stopping_monitor, model_checkpoint, csv_logger, json_logging_callback]
                             )
             elif options['continue_training_2']:
-                X, Y = load_training_data(train_x_data, train_y_data, options, model=model[0], subcort_masks=None)
-                labels = to_categorical(Y, num_classes=2)
+                X, labels = load_training_data(train_x_data, train_y_data, options, model=model[0], subcort_masks=None)
+                y = to_categorical(labels, num_classes=2)
                 model[1].fit(
-                            X, labels, batch_size=batch_size, initial_epoch=options['initial_epoch_2'],
+                            X, y, batch_size=batch_size, initial_epoch=options['initial_epoch_2'],
                             epochs=options['max_epochs']+50, verbose=2, shuffle=True, validation_split=options['train_split'],
                             callbacks=[early_stopping_monitor, model_checkpoint, csv_logger, json_logging_callback]
                             )
@@ -187,22 +187,22 @@ def train_model(model, train_x_data, train_y_data, options):
                 print(datapath + " exists, loading now")
                 # datapath = options['data_path']
                 print( '====> DNN2 // loading training data from HDF5 dataset' )
-                X, labels, X_val, y_val = load_dataset(datapath, options)
+                X, y, X_val, y_val = load_dataset(datapath, options)
                 print( '\n\n' )
                 print( '====> DNN2 // fitting model', '\n' )
                 print( '====> # 3D training patches:', X.shape[0] ,'\n' )
                 print( '====> # patch size:', (X.shape[2],X.shape[3],X.shape[4]) ,'\n' )
                 print( '====> # modalities:', (X.shape[1]) ,'\n' )
                 model[1].fit(
-                            X, labels, batch_size=batch_size, epochs=options['max_epochs_2'],
+                            X, y, batch_size=batch_size, epochs=options['max_epochs_2'],
                             verbose=2, shuffle="batch", validation_data=(X_val,y_val),
                             callbacks=[early_stopping_monitor, model_checkpoint, csv_logger, json_logging_callback]
                             )
             else:
-                X, Y = load_training_data(train_x_data, train_y_data, options, model=model[0], subcort_masks=None)
-                labels = to_categorical(Y, num_classes=2)
+                X, labels = load_training_data(train_x_data, train_y_data, options, model=model[0], subcort_masks=None)
+                y = to_categorical(labels, num_classes=2)
                 print("\n HDF5 dataset is being created: {}".format(datapath))
-                create_dataset(datapath, X, labels)
+                create_dataset(datapath, X, y)
                 print( '\n\n' )
                 print( '====> DNN2 // fitting model', '\n' )
                 print( '====> # 3D training patches:', X.shape[0] ,'\n' )
@@ -210,7 +210,7 @@ def train_model(model, train_x_data, train_y_data, options):
                 print( '====> # modalities:', (X.shape[1]) ,'\n' )
 
                 model[1].fit(
-                            X, labels, batch_size=batch_size, epochs=options['max_epochs_2'],
+                            X, y, batch_size=batch_size, epochs=options['max_epochs_2'],
                             verbose=2, shuffle=True, validation_split=options['train_split'],
                             callbacks=[early_stopping_monitor, model_checkpoint, csv_logger, json_logging_callback]
                             )
