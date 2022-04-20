@@ -23,7 +23,7 @@ options['base_filters'] = 48
 options['activation'] = 'relu'
 options['optimizer'] = 'Adadelta'
 
-options['dropout_mc'] = False
+options['dropout_mc'] = True
 options['dropout_1'] = 0.2
 options['dropout_2'] = 0.2
 options['dropout_3'] = 0.4
