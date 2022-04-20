@@ -21,6 +21,7 @@ def print_data_shape(X):
     print( '====> # patch size:', (X.shape[2], X.shape[3], X.shape[4]), '\n')
     print( '====> # modalities:', (X.shape[1]) , '\n')
 
+
 def partition_leave_one_site_out(datafile=None, test_site=None):
     data = pd.read_excel(datafile)
     ids = data['index']
@@ -62,6 +63,25 @@ def load_dataset(datapath, options):
     return X, y, X_val, y_val
 
 
+def model_callbacks(net_weights, net_model, net_logs, options, RAND):
+    patience=options['patience']
+    f_checkpoint = 'checkpoint_1'
+    if net_model == 'model_2':
+        patience = patience + 10
+        f_checkpoint = 'checkpoint_2'
+    early_stopping_monitor = EarlyStopping(patience=patience)
+    model_checkpoint = ModelCheckpoint(net_weights, monitor='val_loss', save_best_only=True)
+    csv_logger = CSVLogger(net_logs + '/training_' + options['experiment'] + '_' + net_model + '_' + RAND + '_adadelta_log.csv')
+
+    json_log = open('{:}/{:}.json'.format(os.path.join(options['weight_paths'], 'checkpoints'), f_checkpoint), mode='wt', buffering=1)
+    json_logging_callback = LambdaCallback(
+                                            on_epoch_end=lambda epoch, logs: json_log.write(
+                                            json.dumps({'epoch': epoch, 'val_loss': logs['val_loss']}) + '\n'),
+                                            on_train_end=lambda logs: json_log.close()
+                                        )
+    return early_stopping_monitor, model_checkpoint, csv_logger, json_logging_callback
+
+
 def train_model(model, train_x_data, train_y_data, options):
     """
     train the model using a cascade of two CNNs
@@ -88,17 +108,9 @@ def train_model(model, train_x_data, train_y_data, options):
     net_model = 'model_1'
     net_weights = os.path.join(options['weight_paths'], 'checkpoints') + '/' + net_model + '_weights.h5'
 
-    # model training diagnostics + logging
+    # model training diagnostics + logging callbacks
     # tensorboard_cb = TensorBoard(log_dir='./logs/tensorboard', histogram_freq=0, write_graph=True, write_images=True, update_freq='batch')
-    early_stopping_monitor = EarlyStopping(patience=options['patience'])
-    model_checkpoint = ModelCheckpoint(net_weights, monitor='val_loss', save_best_only=True)
-    csv_logger = CSVLogger(net_logs + '/training_' + options['experiment'] + '_' + net_model + '_' + RAND + '_adadelta_log.csv')
-    json_log = open('{:}/checkpoint_1.json'.format(os.path.join(options['weight_paths'], 'checkpoints')), mode='wt', buffering=1)
-    json_logging_callback = LambdaCallback(
-                                        on_epoch_end=lambda epoch, logs: json_log.write(
-                                            json.dumps({'epoch': epoch, 'val_loss': logs['val_loss']}) + '\n'),
-                                        on_train_end=lambda logs: json_log.close()
-                                        )
+    early_stopping_monitor, model_checkpoint, csv_logger, json_logging_callback = model_callbacks(net_weights, net_model, net_logs, options, RAND)
 
     if os.path.isfile(net_weights) and options['load_checkpoint_1']:
         print("loading trained DNN1, model[0]: {} exists".format(net_weights))
@@ -145,17 +157,9 @@ def train_model(model, train_x_data, train_y_data, options):
         net_model = 'model_2'
         net_weights = os.path.join(options['weight_paths'], 'checkpoints') + '/' + net_model + '_weights.h5'
 
-        # model training diagnostics + logging
+        # model training diagnostics + logging callbacks
         # tensorboard_cb = TensorBoard(log_dir='./logs/tensorboard', histogram_freq=0, write_graph=True, write_images=True, update_freq='batch')
-        model_checkpoint = ModelCheckpoint(net_weights, monitor='val_loss', save_best_only=True)
-        early_stopping_monitor = EarlyStopping(patience=options['patience']+10)
-        csv_logger = CSVLogger(net_logs + '/training_' + options['experiment'] + '_' + net_model + '_' + RAND + '_adadelta_log.csv')
-        json_log = open('{:}/checkpoint_2.json'.format(os.path.join(options['weight_paths'], 'checkpoints')), mode='wt', buffering=1)
-        json_logging_callback = LambdaCallback(
-                                                on_epoch_end=lambda epoch, logs: json_log.write(
-                                                json.dumps({'epoch': epoch, 'val_loss': logs['val_loss']}) + '\n'),
-                                                on_train_end=lambda logs: json_log.close()
-                                                )
+        early_stopping_monitor, model_checkpoint, csv_logger, json_logging_callback = model_callbacks(net_weights, net_model, net_logs, options, RAND)
 
         datapath = os.path.join(options['hdf5_data_dir'], options['experiment'] + '_LoSO_data_intermediate.h5')
         if os.path.isfile(net_weights) and options['load_checkpoint_2']:
