@@ -62,6 +62,8 @@ spt.setproctitle(options["experiment"])
 
 options["main_dir"] = sys.argv[2]
 options["model_dir"] = os.path.join(options["main_dir"], "models")
+# save the sampled patches as a HDF5 dataset for faster subsequent experiments
+options["save_as_hdf5"] = True 
 options["hdf5_data_dir"] = os.path.join(options["main_dir"], "data", "hdf5")
 
 sensitivity = 0

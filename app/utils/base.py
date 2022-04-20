@@ -120,9 +120,11 @@ def train_model(model, train_x_data, train_y_data, options):
         else:
             X, labels = load_training_data(train_x_data, train_y_data, options, subcort_masks=None)
             y = to_categorical(labels, num_classes=2)
-            print("\n hdf5 dataset is being created: {}".format(datapath))
-            create_dataset(datapath, X, y)
-            print( '\n\n' )
+            if options["save_as_hdf5"]:
+                print("\n hdf5 dataset is being created: {}".format(datapath))
+                create_dataset(datapath, X, y)
+                print( '\n\n' )
+
             print( '====> DNN1 // fitting model', '\n' )
             print( '====> # 3D training patches:', X.shape[0] ,'\n' )
             print( '====> # patch size:', (X.shape[2],X.shape[3],X.shape[4]) ,'\n' )
@@ -201,9 +203,11 @@ def train_model(model, train_x_data, train_y_data, options):
             else:
                 X, labels = load_training_data(train_x_data, train_y_data, options, model=model[0], subcort_masks=None)
                 y = to_categorical(labels, num_classes=2)
-                print("\n HDF5 dataset is being created: {}".format(datapath))
-                create_dataset(datapath, X, y)
-                print( '\n\n' )
+                if options["save_as_hdf5"]:
+                    print("\n HDF5 dataset is being created: {}".format(datapath))
+                    create_dataset(datapath, X, y)
+                    print( '\n\n' )
+                    
                 print( '====> DNN2 // fitting model', '\n' )
                 print( '====> # 3D training patches:', X.shape[0] ,'\n' )
                 print( '====> # patch size:', (X.shape[2], X.shape[3], X.shape[4]) ,'\n' )
