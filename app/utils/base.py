@@ -81,10 +81,11 @@ def train_model(model, train_x_data, train_y_data, options):
 
     # first iteration (CNN1):
     net_model = 'model_1'
+    net_weights = os.path.join(options['weight_paths'], 'checkpoints') + '/' + net_model + '_weights.h5'
 
+    # model training diagnostics + logging
     # tensorboard_cb = TensorBoard(log_dir='./logs/tensorboard', histogram_freq=0, write_graph=True, write_images=True, update_freq='batch')
     early_stopping_monitor = EarlyStopping(patience=options['patience'])
-    net_weights = os.path.join(options['weight_paths'], 'checkpoints') + '/' + net_model + '_weights.h5'
     model_checkpoint = ModelCheckpoint(net_weights, monitor='val_loss', save_best_only=True)
     csv_logger = CSVLogger(net_logs + '/training_' + options['experiment'] + '_' + net_model + '_' + RAND + '_adadelta_log.csv')
     json_log = open('{:}/checkpoint_1.json'.format(os.path.join(options['weight_paths'], 'checkpoints')), mode='wt', buffering=1)
@@ -138,8 +139,10 @@ def train_model(model, train_x_data, train_y_data, options):
     # load training data based on CNN1 candidates
     if options['train_2']:
         net_model = 'model_2'
-        # tensorboard_cb = TensorBoard(log_dir='./logs/tensorboard', histogram_freq=0, write_graph=True, write_images=True, update_freq='batch')
         net_weights = os.path.join(options['weight_paths'], 'checkpoints') + '/' + net_model + '_weights.h5'
+
+        # model training diagnostics + logging
+        # tensorboard_cb = TensorBoard(log_dir='./logs/tensorboard', histogram_freq=0, write_graph=True, write_images=True, update_freq='batch')
         model_checkpoint = ModelCheckpoint(net_weights, monitor='val_loss', save_best_only=True)
         early_stopping_monitor = EarlyStopping(patience=options['patience']+10)
         csv_logger = CSVLogger(net_logs + '/training_' + options['experiment'] + '_' + net_model + '_' + RAND + '_adadelta_log.csv')
