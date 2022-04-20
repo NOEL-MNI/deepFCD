@@ -213,7 +213,7 @@ def train_model(model, train_x_data, train_y_data, options):
     return model
 
 
-def test_model(model, test_x_data, options, uncertainty=False):
+def test_model(model, test_x_data, options, uncertainty=True):
     threshold = options['th_dnn_train_2']
     scan = options['test_scan'] + '_'
     # organize experiments
@@ -222,13 +222,13 @@ def test_model(model, test_x_data, options, uncertainty=False):
     options['test_mean_name'] = scan + options['experiment'] + '_prob_mean_0.nii.gz'
     options['test_var_name'] = scan + options['experiment'] + '_prob_var_0.nii.gz'
 
-    t1, _, _ = test_scan(model[0], test_x_data, options, save_nifti=True, uncertainty=True, T=20)
+    t1, _, _ = test_scan(model[0], test_x_data, options, save_nifti=True, uncertainty=uncertainty, T=20)
 
     # second network
     options['test_name'] = scan + options['experiment'] + '_prob_1.nii.gz'
     options['test_mean_name'] = scan + options['experiment'] + '_prob_mean_1.nii.gz'
     options['test_var_name'] = scan + options['experiment'] + '_prob_var_1.nii.gz'
-    t2, affine, header = test_scan(model[1], test_x_data, options, save_nifti=True, uncertainty=True, T=50, candidate_mask=t1>threshold)
+    t2, _, _ = test_scan(model[1], test_x_data, options, save_nifti=True, uncertainty=uncertainty, T=50, candidate_mask=t1>threshold)
 
     # postprocess the output segmentation
     # options['test_name'] = options['experiment'] + '_out_CNN.nii.gz'
@@ -268,7 +268,7 @@ def test_scan(model, test_x_data, options, transit=None, save_nifti=False, uncer
     # compute lesion segmentation in batches of size options['batch_size']
     for batch, centers in load_test_patches(test_x_data, options, options['patch_size'], options['batch_size'], options['min_th'], candidate_mask):
         if uncertainty:
-            # predicti uncertainty
+            # predict uncertainty
             y_pred, y_pred_var = predict_uncertainty(model, batch, batch_size=batch_size, T=T)
         else:
             y_pred = model.predict(np.squeeze(batch), batch_size=batch_size, verbose=1)
