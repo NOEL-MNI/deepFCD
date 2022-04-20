@@ -66,6 +66,7 @@ options["model_dir"] = os.path.join(options["main_dir"], "models")
 options["save_as_hdf5"] = True 
 options["hdf5_data_dir"] = os.path.join(options["main_dir"], "data", "hdf5")
 
+options["compute_performance"] = False
 sensitivity = 0
 perf = {}
 
@@ -202,26 +203,48 @@ for _, scan in enumerate(
     print("testing the model for scan: {} ".format(scan))
     print("-" * 80)
 
-    # test0: prediction/stage1 | test1: pred/stage2 | test2: morphological processing + clustered | lpred: predicted label only | count: # false positives
-    test0, test1, test2, lpred, count = test_model(model, t_data, options)
+    # test0: prediction/stage1
+    # test1: prediction/stage2
+    # test2: morphological processing + clustered
+    # lpred: predicted label only
+    # count: number of false positives
+    if not options["compute_performance"]:
+        test0, test1 = test_model(model, t_data, options)
+        print("number of non-zero voxels after CNN#1: {}".format(np.count_nonzero(test0)))
+        print("number of non-zero voxels after CNN#2: {}".format(np.count_nonzero(test1)))
+    else:
+        test0, test1, test2, lpred, count = test_model(model, t_data, options, performance=True)
+        label = np.asarray(load_nii(test_labels[scan]).get_data())
+        # print("label_shape: {}, label_unique: {}".format(label.shape, np.unique(label)))
+        lesion_pred = extract_lesional_clus(label, test1, scan, options)
+        print("-" * 80)
+        print("computing performance metrics")
+        print("-" * 80)
 
-    label = np.asarray(load_nii(test_labels[scan]).get_data())
-    # print("label_shape: {}, label_unique: {}".format(label.shape, np.unique(label)))
-    lesion_pred = extract_lesional_clus(label, test1, scan, options)
-
-    print("number of non-zero voxels after CNN#1: {}".format(np.count_nonzero(test0)))
-    print("number of non-zero voxels after CNN#2: {}".format(np.count_nonzero(test1)))
-    print(
-        "number of non-zero voxels after size thresholding (> 20 voxels): {}".format(
-            np.count_nonzero(test2)
+        # save metrics in a pandas dataframe
+        perf = performancer(perf, scan, test2, label, lesion_pred, count)
+    
+        print("number of non-zero voxels after CNN#1: {}".format(np.count_nonzero(test0)))
+        print("number of non-zero voxels after CNN#2: {}".format(np.count_nonzero(test1)))
+        print(
+            "number of non-zero voxels after size thresholding (> 20 voxels): {}".format(
+                np.count_nonzero(test2)
+            )
         )
-    )
 
-    print("-" * 80)
-    print("computing performance metrics")
-    print("-" * 80)
+        if perf[scan]["sensitivity"] != 0:
+            sensitivity += 1
+        csv_name = (
+            os.path.join(options["test_folder"], "predictions")
+            + "/" + "results_tbin_" + str(options["t_bin"])
+            + "_lmin_" + str(options["l_min"])
+            + "_" + str(options["experiment"]) + ".csv"
+        )
+        # save performance metrics to disk
+        df = pd.DataFrame(perf)
+        df = df.transpose()
+        df.to_csv(csv_name)
 
-    perf = performancer(perf, scan, test2, label, lesion_pred, count)
 
     print("-" * 80)
     end = time.time()
@@ -229,21 +252,3 @@ for _, scan in enumerate(
     print("=" * 80)
     print("time elapsed: ~ {} seconds".format(diff))
     print("=" * 80)
-
-    if perf[scan]["sensitivity"] != 0:
-        sensitivity += 1
-
-    csv_name = (
-        os.path.join(options["test_folder"], "predictions")
-        + "/"
-        + "results_tbin_"
-        + str(options["t_bin"])
-        + "_lmin_"
-        + str(options["l_min"])
-        + "_"
-        + str(options["experiment"])
-        + ".csv"
-    )
-    df = pd.DataFrame(perf)
-    df = df.transpose()
-    df.to_csv(csv_name)

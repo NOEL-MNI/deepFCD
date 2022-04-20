@@ -227,7 +227,7 @@ def train_model(model, train_x_data, train_y_data, options):
     return model
 
 
-def test_model(model, test_x_data, options, uncertainty=True):
+def test_model(model, test_x_data, options, performance=False, uncertainty=True):
     threshold = options['th_dnn_train_2']
     scan = options['test_scan'] + '_'
     # organize experiments
@@ -244,10 +244,14 @@ def test_model(model, test_x_data, options, uncertainty=True):
     options['test_var_name'] = scan + options['experiment'] + '_prob_var_1.nii.gz'
     t2, _, _ = test_scan(model[1], test_x_data, options, save_nifti=True, uncertainty=uncertainty, T=50, candidate_mask=t1>threshold)
 
-    # postprocess the output segmentation
-    # options['test_name'] = options['experiment'] + '_out_CNN.nii.gz'
-    # out_segmentation, lpred, count = post_processing(t2, options, affine, header, save_nifti=True)
-    return t1, t2#, out_segmentation, lpred, count
+    if performance:
+        # postprocess the output segmentation
+        options['test_name'] = options['experiment'] + '_out_CNN.nii.gz'
+        out_segmentation, lpred, count = post_processing(t2, options, affine, header, save_nifti=True)
+        outputs = [t1, t2, out_segmentation, lpred, count]
+    else:
+        outputs = [t1, t2]
+    return outputs
 
 
 def test_scan(model, test_x_data, options, transit=None, save_nifti=False, uncertainty=False, candidate_mask=None, T=20):
