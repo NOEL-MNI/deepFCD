@@ -16,6 +16,11 @@ from utils.patch_dataloader import *
 from utils.post_processor import *
 
 
+def print_data_shape(X):
+    print( '====> # 3D training patches:', X.shape[0], '\n' )
+    print( '====> # patch size:', (X.shape[2], X.shape[3], X.shape[4]), '\n')
+    print( '====> # modalities:', (X.shape[1]) , '\n')
+
 def partition_leave_one_site_out(datafile=None, test_site=None):
     data = pd.read_excel(datafile)
     ids = data['index']
@@ -107,10 +112,9 @@ def train_model(model, train_x_data, train_y_data, options):
             # datapath = options['data_path']
             X, y, X_val, y_val = load_dataset(datapath, options)
             print( '\n\n' )
+
             print( '====> DNN1 // fitting model', '\n' )
-            print( '====> # 3D training patches:', X.shape[0] ,'\n' )
-            print( '====> # patch size:', (X.shape[2],X.shape[3],X.shape[4]) ,'\n' )
-            print( '====> # modalities:', (X.shape[1]) ,'\n' )
+            print_data_shape(X)
 
             model[0].fit(
                         X, y, batch_size=batch_size, epochs=options['max_epochs_1'],
@@ -126,10 +130,8 @@ def train_model(model, train_x_data, train_y_data, options):
                 print( '\n\n' )
 
             print( '====> DNN1 // fitting model', '\n' )
-            print( '====> # 3D training patches:', X.shape[0] ,'\n' )
-            print( '====> # patch size:', (X.shape[2],X.shape[3],X.shape[4]) ,'\n' )
-            print( '====> # modalities:', (X.shape[1]) ,'\n' )
-
+            print_data_shape(X)
+            
             model[0].fit(
                         X, y, batch_size=batch_size, epochs=options['max_epochs_1'],
                         verbose=2, shuffle=True, validation_split=options['train_split'],
@@ -165,10 +167,10 @@ def train_model(model, train_x_data, train_y_data, options):
                 print( '====> DNN2 // loading training data from HDF5 dataset' )
                 X, y, X_val, y_val = load_dataset(datapath, options)
                 print( '\n\n' )
+                
                 print( '====> DNN2 // fitting model', '\n' )
-                print( '====> # 3D training patches:', X.shape[0] ,'\n' )
-                print( '====> # patch size:', (X.shape[2],X.shape[3],X.shape[4]) ,'\n' )
-                print( '====> # modalities:', (X.shape[1]) ,'\n' )
+                print_data_shape(X)
+
                 model[1].fit(
                             X, y, batch_size=batch_size, initial_epoch=options['initial_epoch_2'],
                             epochs=options['max_epochs_2'], verbose=2, shuffle="batch", validation_data=(X_val,y_val),
@@ -190,11 +192,11 @@ def train_model(model, train_x_data, train_y_data, options):
                 # datapath = options['data_path']
                 print( '====> DNN2 // loading training data from HDF5 dataset' )
                 X, y, X_val, y_val = load_dataset(datapath, options)
-                print( '\n\n' )
+                print('\n\n')
+
                 print( '====> DNN2 // fitting model', '\n' )
-                print( '====> # 3D training patches:', X.shape[0] ,'\n' )
-                print( '====> # patch size:', (X.shape[2],X.shape[3],X.shape[4]) ,'\n' )
-                print( '====> # modalities:', (X.shape[1]) ,'\n' )
+                print_data_shape(X)
+
                 model[1].fit(
                             X, y, batch_size=batch_size, epochs=options['max_epochs_2'],
                             verbose=2, shuffle="batch", validation_data=(X_val,y_val),
@@ -209,9 +211,7 @@ def train_model(model, train_x_data, train_y_data, options):
                     print( '\n\n' )
                     
                 print( '====> DNN2 // fitting model', '\n' )
-                print( '====> # 3D training patches:', X.shape[0] ,'\n' )
-                print( '====> # patch size:', (X.shape[2], X.shape[3], X.shape[4]) ,'\n' )
-                print( '====> # modalities:', (X.shape[1]) ,'\n' )
+                print_data_shape(X)
 
                 model[1].fit(
                             X, y, batch_size=batch_size, epochs=options['max_epochs_2'],
