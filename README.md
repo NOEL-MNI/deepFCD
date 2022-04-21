@@ -1,5 +1,5 @@
 <h2 align="center">
-  <b>Code repository for</b>:
+  Code repository for:<br>
   Multicenter Validated Detection of Focal Cortical Dysplasia using Deep Learning<br>
 </h2>
 
