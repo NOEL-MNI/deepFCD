@@ -18,10 +18,14 @@ options['cuda'] = sys.argv[5] # cpu, cuda, cuda0, cuda1, or cudaX: flag using gp
 if options['cuda'].startswith('cuda1'):
     os.environ["THEANO_FLAGS"] = "mode=FAST_RUN,device=cuda1,floatX=float32,dnn.enabled=False"
 elif options['cuda'].startswith('cpu'):
-    os.environ['OMP_NUM_THREADS'] = str(multiprocessing.cpu_count())
-    os.environ['MKL_NUM_THREADS'] = str(multiprocessing.cpu_count())
-    os.environ['GOTO_NUM_THREADS'] = str(multiprocessing.cpu_count())
-    os.environ['openmp'] = 'True'
+    os.environ['OMP_NUM_THREADS'] = str(multiprocessing.cpu_count() // 2)
+    var = os.getenv('OMP_NUM_THREADS', None)
+    try:
+        print("# of threads initialized: {}".format(int(var)))
+    except ValueError:
+        raise TypeError("The environment variable OMP_NUM_THREADS"
+                        " should be a number, got '%s'." % var)
+    # os.environ['openmp'] = 'True'
     os.environ["THEANO_FLAGS"] = "mode=FAST_RUN,device=cpu,openmp=True,floatX=float32"
 else:
     os.environ["THEANO_FLAGS"] = "mode=FAST_RUN,device=cuda0,floatX=float32,dnn.enabled=False"
