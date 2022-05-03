@@ -44,4 +44,6 @@ COPY app/ /app/
 
 RUN sudo chmod -R 777 /app && sudo chmod +x /app/inference.py
 
+RUN git clone --depth 1 https://github.com/NOEL-MNI/deepMask.git && rm -rf deepMask/.git
+
 CMD ["python3"]
