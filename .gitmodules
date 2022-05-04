@@ -1,3 +1,3 @@
 [submodule "app/deepMask"]
 	path = app/deepMask
-	url = git@github.com:NOEL-MNI/deepMask.git
+	url = https://github.com/NOEL-MNI/deepMask.git
