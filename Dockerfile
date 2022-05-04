@@ -37,7 +37,7 @@ RUN chmod 777 /home/user
 
 RUN wget --quiet https://repo.anaconda.com/miniconda/Miniconda3-py37_4.11.0-Linux-x86_64.sh \
     && /bin/bash Miniconda3-py37_4.11.0-Linux-x86_64.sh -b -p /home/user/conda \
-    && rm Miniconda3-py37_4.11.0-Linux-x86_64.sh
+    && rm -f Miniconda3-py37_4.11.0-Linux-x86_64.sh
 
 RUN python -m pip install --upgrade --force --ignore-installed pip
 
