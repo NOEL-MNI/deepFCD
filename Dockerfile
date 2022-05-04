@@ -1,5 +1,14 @@
 FROM nvidia/cuda:10.0-cudnn7-devel-ubuntu18.04
-LABEL maintainer="Ravnoor Singh Gill <ravnoor@gmail.com>"
+LABEL maintainer="Ravnoor Singh Gill <ravnoor@gmail.com>" \
+        org.opencontainers.image.title="deepFCD" \
+        org.opencontainers.image.description="Automated Detection of Focal Cortical Dysplasia using Deep Learning" \
+        org.opencontainers.image.licenses="BSD-3-Clause" \
+        org.opencontainers.image.source="https://github.com/NOEL-MNI/deepFCD" \
+        org.opencontainers.image.url="https://github.com/NOEL-MNI/deepFCD"
+
+# manually update outdated repository key
+# fixes invalid GPG error: https://forums.developer.nvidia.com/t/gpg-error-http-developer-download-nvidia-com-compute-cuda-repos-ubuntu1804-x86-64/212904
+RUN apt-key adv --fetch-keys https://developer.download.nvidia.com/compute/cuda/repos/ubuntu1804/x86_64/3bf863cc.pub
 
 RUN apt-get update && apt-get upgrade -y \
     && apt-get install -y git \
