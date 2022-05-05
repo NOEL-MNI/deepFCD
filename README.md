@@ -95,7 +95,7 @@ chmod +x ./app/inference.py # make the script executable -ensure you have the re
     ${IO_DIRECTORY}    \ # input/output directory
     cuda0                # toggle b/w CPU/GPU - string specifies CPU ('cpu') or GPU ID ('cudaX', where N is in the range (0,N), where N is the total number of installed GPUs)
 ```
-### 3.2 Inference using Docker
+### 3.2 Inference using Docker (GPU)
 ```bash
 docker run --rm -it --init \
     --gpus=all                 \ # expose the host GPUs to the guest docker container
@@ -108,6 +108,20 @@ docker run --rm -it --init \
     ${FLAIR_IMAGE}     \ # T2-weighted FLAIR image; for example: FCD_001_t2.nii.gz or flair.nii.gz [T1 is specified before FLAIR - order is important]
     /io                \ # input/output directory within the container mapped to ${IO_DIRECTORY} or ${PWD} [ DO NOT MODIFY]
     cuda0                # toggle b/w CPU/GPU - string specifies CPU ('cpu') or GPU ID ('cudaX', where N is in the range (0,N), where N is the total number of installed GPUs)
+```
+
+### 3.3 Inference using Docker (CPU)
+```bash
+docker run --rm -it --init \
+    --user="$(id -u):$(id -g)" \ # map user permissions appropriately
+    --volume="$PWD:/io"        \ # $PWD refers to the present working directory containing the input images, can be modified to a local host directory
+    noelmni/deep-fcd:latest    \ # docker image containing all the necessary software dependencies
+    /app/inference.py  \ # the script to perform inference on the multimodal MRI images
+    ${PATIENT_ID}      \ # prefix for the filenames; for example: FCD_001 (needed for outputs only)
+    ${T1_IMAGE}        \ # T1-weighted image; for example: FCD_001_t1.nii.gz or t1.nii.gz [T1 is specified before FLAIR - order is important]
+    ${FLAIR_IMAGE}     \ # T2-weighted FLAIR image; for example: FCD_001_t2.nii.gz or flair.nii.gz [T1 is specified before FLAIR - order is important]
+    /io                \ # input/output directory within the container mapped to ${IO_DIRECTORY} or ${PWD} [ DO NOT MODIFY]
+    cpu                  # toggle b/w CPU/GPU - string specifies CPU ('cpu') or GPU ID ('cudaX', where N is in the range (0,N), where N is the total number of installed GPUs)
 ```
 
 ## License
