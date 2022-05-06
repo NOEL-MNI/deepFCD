@@ -3,6 +3,8 @@
 import os
 import sys
 import multiprocessing
+from mo_dots import Data
+import subprocess
 from config.experiment import options
 import warnings
 warnings.filterwarnings('ignore')
@@ -10,6 +12,7 @@ import time
 import numpy as np
 import setproctitle as spt
 from tqdm import tqdm
+from utils.helpers import *
 
 os.environ["KERAS_BACKEND"] = "theano"
 
@@ -37,50 +40,28 @@ from keras import backend as K
 from utils.metrics import *
 from utils.base import *
 
-# deepMask imports
-import torch
-from mo_dots import Data
-from deepMask.app.utils.data import *
-from deepMask.app.utils.deepmask import *
-from deepMask.app.utils.image_processing import noelImageProcessor
-import deepMask.app.vnet as vnet
 
 # configuration
 args = Data()
-args.dir = sys.argv[4]
 args.id = sys.argv[1]
-args.brain_masking = True # set to True or any non-zero value for brain extraction or skull-removal, False otherwise
-args.preprocess = True # co-register T1 and T2 contrasts before brain extraction
-args.outdir = os.path.join(args.dir, args.id)
-args.seed = 666
 args.t1_fname = sys.argv[2]
 args.t2_fname = sys.argv[3]
+args.dir = sys.argv[4]
+args.brain_masking = True # set to True or any non-zero value for brain extraction or skull-removal, False otherwise
+args.preprocess = False # co-register T1 and T2 contrasts before brain extraction
+args.outdir = os.path.join(args.dir, args.id)
+
 args.t1 = os.path.join(args.outdir, args.t1_fname)
 args.t2 = os.path.join(args.outdir, args.t2_fname)
 cwd = os.path.dirname(__file__)
 
 if args.brain_masking:
-    # trained weights based on manually corrected masks from
-    # 153 patients with cortical malformations
-    args.inference = os.path.join(cwd, 'deepMask/app/weights', 'vnet_masker_model_best.pth.tar')
-    # resize all input images to this resolution matching training data
-    args.resize = (160,160,160)
     args.use_gpu = False
-    args.cuda = torch.cuda.is_available() and args.use_gpu
-    torch.manual_seed(args.seed)
-    args.device_ids = list(range(torch.cuda.device_count()))
-    if args.cuda:
-        torch.cuda.manual_seed(args.seed)
-        print("build vnet, using GPU")
-    else:
-        print("build vnet, using CPU")
-    model = vnet.build_model(args)
-    template = os.path.join(cwd, 'deepMask/app/template', 'mni_icbm152_t1_tal_nlin_sym_09a.nii.gz')
-
     # MRI pre-processing configuration
     args.output_suffix = '_brain_final.nii.gz'
-    
-    noelImageProcessor(id=args.id, t1=args.t1, t2=args.t2, output_suffix=args.output_suffix, output_dir=args.outdir, template=template, usen3=True, args=args, model=model, preprocess=args.preprocess).pipeline()
+
+    preprocess_sh = os.path.join(cwd, 'preprocess.sh')
+    subprocess.check_call([preprocess_sh, args.id, args.t1_fname, args.t2_fname, args.dir, bool2str(args.preprocess), bool2str(args.use_gpu)])
 
     args.t1 = os.path.join(args.outdir, args.id + '_t1' + args.output_suffix)
     args.t2 = os.path.join(args.outdir, args.id + '_t2' + args.output_suffix)
