@@ -236,18 +236,18 @@ def test_model(model, test_x_data, options, performance=False, uncertainty=True)
     options['test_mean_name'] = scan + options['experiment'] + '_prob_mean_0.nii.gz'
     options['test_var_name'] = scan + options['experiment'] + '_prob_var_0.nii.gz'
 
-    t1, _, _ = test_scan(model[0], test_x_data, options, save_nifti=True, uncertainty=uncertainty, T=20)
+    t1, header = test_scan(model[0], test_x_data, options, save_nifti=True, uncertainty=uncertainty, T=20)
 
     # second network
     options['test_name'] = scan + options['experiment'] + '_prob_1.nii.gz'
     options['test_mean_name'] = scan + options['experiment'] + '_prob_mean_1.nii.gz'
     options['test_var_name'] = scan + options['experiment'] + '_prob_var_1.nii.gz'
-    t2, _, _ = test_scan(model[1], test_x_data, options, save_nifti=True, uncertainty=uncertainty, T=50, candidate_mask=t1>threshold)
+    t2, header = test_scan(model[1], test_x_data, options, save_nifti=True, uncertainty=uncertainty, T=50, candidate_mask=t1>threshold)
 
     if performance:
         # postprocess the output segmentation
         options['test_name'] = options['experiment'] + '_out_CNN.nii.gz'
-        out_segmentation, lpred, count = post_processing(t2, options, affine, header, save_nifti=True)
+        out_segmentation, lpred, count = post_processing(t2, options, header, save_nifti=True)
         outputs = [t1, t2, out_segmentation, lpred, count]
     else:
         outputs = [t1, t2]
@@ -267,13 +267,13 @@ def test_scan(model, test_x_data, options, transit=None, save_nifti=False, uncer
     - test_scan = Output image containing the probability output segmentation
     - If save_nifti --> Saves a nii file at specified location options['test_folder']/['test_scan']
     """
-    batch_size = options['mini_batch_size'] 
+    batch_size = options['mini_batch_size']
     # get_scan name and create an empty nii image to store segmentation
     scans = test_x_data.keys()
     flair_scans = [test_x_data[s]['FLAIR'] for s in scans]
     flair_image = load_nii(flair_scans[0]).get_data()
     header = load_nii(flair_scans[0]).header
-    affine = header.get_qform()
+    # affine = header.get_qform()
     seg_image = np.zeros_like(flair_image)
     var_image = np.zeros_like(flair_image)
 
@@ -297,33 +297,33 @@ def test_scan(model, test_x_data, options, transit=None, save_nifti=False, uncer
 
     if save_nifti:
         # out_scan = nib.Nifti1Image(seg_image, np.eye(4))
-        out_scan = nib.Nifti1Image(seg_image, affine, header)
+        out_scan = nib.Nifti1Image(seg_image, header=header)
         out_scan.to_filename(os.path.join(options['pred_folder'], options['test_mean_name']))
 
         if uncertainty:
-            out_scan = nib.Nifti1Image(var_image, affine, header)
+            out_scan = nib.Nifti1Image(var_image, header=header)
             out_scan.to_filename(os.path.join(options['pred_folder'], options['test_var_name']))
 
     if transit is not None:
         if not os.path.exists(test_folder):
             os.mkdir(test_folder)
-        out_scan = nib.Nifti1Image(seg_image, affine, header)
+        out_scan = nib.Nifti1Image(seg_image, header=header)
         test_name = str.replace(scan, '_flair.nii.gz', '') + '_out_pred_mean_0.nii.gz'
         out_scan.to_filename(os.path.join(test_folder, test_name))
 
         if uncertainty:
-            out_scan = nib.Nifti1Image(var_image, affine, header)
+            out_scan = nib.Nifti1Image(var_image, header=header)
             test_name = str.replace(scan, '_flair.nii.gz', '') + '_out_pred_var_0.nii.gz'
             out_scan.to_filename(os.path.join(test_folder, test_name))
 
         if not os.path.exists(os.path.join(test_folder, options['experiment'])):
             os.mkdir(os.path.join(test_folder, options['experiment']))
 
-        out_scan = nib.Nifti1Image(seg_image, affine, header)
+        out_scan = nib.Nifti1Image(seg_image, header=header)
         test_name = str.replace(scan, '_flair.nii.gz', '') + '_out_pred_0.nii.gz'
         out_scan.to_filename(os.path.join(test_folder, test_name))
 
-    return seg_image, affine, header
+    return seg_image, header
 
 
 def copy_most_recent_model(path, net_model):
