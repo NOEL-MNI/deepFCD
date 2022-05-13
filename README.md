@@ -95,7 +95,7 @@ chmod +x ./app/inference.py # make the script executable -ensure you have the re
     ${IO_DIRECTORY}    \ # input/output directory
     cuda0                # toggle b/w CPU/GPU - string specifies CPU ('cpu') or GPU ID ('cudaX', where N is in the range (0,N), where N is the total number of installed GPUs)
 ```
-### 3.2 Inference using Docker (GPU)
+### 3.2 Inference using Docker (GPU), requires [nvidia-container-toolkit](https://github.com/NVIDIA/nvidia-container-toolkit)
 ```bash
 docker run --rm -it --init \
     --gpus=all                 \ # expose the host GPUs to the guest docker container
