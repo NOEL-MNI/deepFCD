@@ -41,9 +41,11 @@
 2. Keras == 2.2.4
 3. Theano == 1.0.4
 4. ANTsPy == 0.3.2 (for MRI preprocessing)
-5. PyTorch == 1.4.0 (for deepMask)
+4. ANTsPyNet == 0.1.8 (for MRI preprocessing)
+5. PyTorch == 1.11.0 (for deepMask)
 6. h5py == 2.10.0
 + app/requirements.txt
++ app/deepMask/app/requirements.txt
 ```
 
 ## Installation
