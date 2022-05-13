@@ -40,7 +40,7 @@ torch.manual_seed(args.seed)
 args.device_ids = list(range(torch.cuda.device_count()))
 
 mem_size = psutil.virtual_memory().available // (1024*1024*1024) # available RAM in GB
-mem_size = 32
+# mem_size = 32
 if mem_size < 64 and not args.use_gpu:
     os.environ["BRAIN_MASKING"] = "cpu"
     os.environ["CUDA_VISIBLE_DEVICES"] = "-1"
