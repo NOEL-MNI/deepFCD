@@ -57,13 +57,20 @@ cd deepFCD
 wget https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.sh -O ~/miniconda.sh
 bash ~/miniconda.sh -b -p $HOME/miniconda
 
-# create and activate a Conda environment
+# create and activate a Conda environment for preprocessing
+conda create -n preprocess python=3.7
+conda activate preprocess
+# install dependencies using pip
+python -m pip install -r app/deepMask/app/requirements.txt
+conda deactivate
+
+# create and activate a Conda environment for deepFCD
 conda create -n deepFCD python=3.7
 conda activate deepFCD
-
 # install dependencies using pip
-python -m pip install -r app/requirements.txt --find-links https://download.pytorch.org/whl/torch_stable.html
+python -m pip install -r app/requirements.txt
 conda install -c conda-forge pygpu=0.7.6
+
 ```
 
 
