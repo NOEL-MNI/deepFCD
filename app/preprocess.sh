@@ -30,13 +30,13 @@ conda activate preprocess
 # echo $CONDA_PREFIX
 
 if [ ${PREPROCESSING} -eq 1 ] && [ ${USE_GPU} -eq 0 ]; then
-	./preprocess.py -i ${ID} -t1 ${T1_FNAME} -t2 ${T2_FNAME} -d ${BASEDIR} --preprocess
+	python3 $PWD/preprocess.py -i ${ID} -t1 ${T1_FNAME} -t2 ${T2_FNAME} -d ${BASEDIR} --preprocess
 elif [ ${PREPROCESSING} -eq 0 ] && [ ${USE_GPU} -eq 1 ]; then	
-	./preprocess.py -i ${ID} -t1 ${T1_FNAME} -t2 ${T2_FNAME} -d ${BASEDIR} --use_gpu
+	python3 $PWD/preprocess.py -i ${ID} -t1 ${T1_FNAME} -t2 ${T2_FNAME} -d ${BASEDIR} --use_gpu
 elif [ ${PREPROCESSING} -eq 1 ] && [ ${USE_GPU} -eq 1 ]; then
-	./preprocess.py -i ${ID} -t1 ${T1_FNAME} -t2 ${T2_FNAME} -d ${BASEDIR} --preprocess --use_gpu
+	python3 $PWD/preprocess.py -i ${ID} -t1 ${T1_FNAME} -t2 ${T2_FNAME} -d ${BASEDIR} --preprocess --use_gpu
 else
-    ./preprocess.py -i ${ID} -t1 ${T1_FNAME} -t2 ${T2_FNAME} -d ${BASEDIR}
+    python3 $PWD/preprocess.py -i ${ID} -t1 ${T1_FNAME} -t2 ${T2_FNAME} -d ${BASEDIR}
 fi
 
 conda deactivate
