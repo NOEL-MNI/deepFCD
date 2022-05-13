@@ -102,7 +102,10 @@ chmod +x ./app/inference.py # make the script executable -ensure you have the re
     ${T1_IMAGE}        \ # T1-weighted image; for example: FCD_001_t1.nii.gz or t1.nii.gz [T1 is specified before FLAIR - order is important]
     ${FLAIR_IMAGE}     \ # T2-weighted FLAIR image; for example: FCD_001_t2.nii.gz or flair.nii.gz [T1 is specified before FLAIR - order is important]
     ${IO_DIRECTORY}    \ # input/output directory
-    cuda0                # toggle b/w CPU/GPU - string specifies CPU ('cpu') or GPU ID ('cudaX', where N is in the range (0,N), where N is the total number of installed GPUs)
+    cuda0              \ # toggle b/w CPU/GPU - string specifies CPU ('cpu') or GPU ID ('cudaX', where N is in the range (0,N), where N is the total number of installed GPUs)
+    1                  \ # perform (`1`) or not perform (`0`) brain extraction
+    1                  \ # perform (`1`) or not perform (`0`) image pre-processing
+
 ```
 ### 3.2 Inference using Docker (GPU), requires [nvidia-container-toolkit](https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/install-guide.html)
 ```bash
@@ -116,7 +119,9 @@ docker run --rm -it --init \
     ${T1_IMAGE}        \ # T1-weighted image; for example: FCD_001_t1.nii.gz or t1.nii.gz [T1 is specified before FLAIR - order is important]
     ${FLAIR_IMAGE}     \ # T2-weighted FLAIR image; for example: FCD_001_t2.nii.gz or flair.nii.gz [T1 is specified before FLAIR - order is important]
     /io                \ # input/output directory within the container mapped to ${IO_DIRECTORY} or ${PWD} [ DO NOT MODIFY]
-    cuda0                # toggle b/w CPU/GPU - string specifies CPU ('cpu') or GPU ID ('cudaX', where N is in the range (0,N), where N is the total number of installed GPUs)
+    cuda0              \ # toggle b/w CPU/GPU - string specifies CPU ('cpu') or GPU ID ('cudaX', where N is in the range (0,N), where N is the total number of installed GPUs)
+    1                  \ # perform (`1`) or not perform (`0`) brain extraction
+    1                  \ # perform (`1`) or not perform (`0`) image pre-processing
 ```
 
 ### 3.3 Inference using Docker (CPU)
@@ -130,7 +135,9 @@ docker run --rm -it --init \
     ${T1_IMAGE}        \ # T1-weighted image; for example: FCD_001_t1.nii.gz or t1.nii.gz [T1 is specified before FLAIR - order is important]
     ${FLAIR_IMAGE}     \ # T2-weighted FLAIR image; for example: FCD_001_t2.nii.gz or flair.nii.gz [T1 is specified before FLAIR - order is important]
     /io                \ # input/output directory within the container mapped to ${IO_DIRECTORY} or ${PWD} [ DO NOT MODIFY]
-    cpu                  # toggle b/w CPU/GPU - string specifies CPU ('cpu') or GPU ID ('cudaX', where N is in the range (0,N), where N is the total number of installed GPUs)
+    cpu                \ # toggle b/w CPU/GPU - string specifies CPU ('cpu') or GPU ID ('cudaX', where N is in the range (0,N), where N is the total number of installed GPUs)
+    1                  \ # perform (`1`) or not perform (`0`) brain extraction
+    1                  \ # perform (`1`) or not perform (`0`) image pre-processing
 ```
 
 ## License
