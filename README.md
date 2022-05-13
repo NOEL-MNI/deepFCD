@@ -50,7 +50,7 @@
 
 ```bash
 # clone the repo with the deepMask submodule
-git clone --depth 1 --recurse-submodules -j2 https://github.com/NOEL-MNI/deepFCD.git
+git clone --recurse-submodules -j2 https://github.com/NOEL-MNI/deepFCD.git
 cd deepFCD
 
 # install Miniconda3
