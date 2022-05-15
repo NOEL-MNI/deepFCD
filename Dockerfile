@@ -39,20 +39,21 @@ RUN wget --quiet https://repo.anaconda.com/miniconda/Miniconda3-py37_4.11.0-Linu
     && /bin/bash Miniconda3-py37_4.11.0-Linux-x86_64.sh -b -p /home/user/conda \
     && rm -f Miniconda3-py37_4.11.0-Linux-x86_64.sh
 
-RUN python -m pip install --upgrade --force --ignore-installed pip
+RUN git clone --depth 1 https://github.com/NOEL-MNI/deepMask.git \
+    && rm -rf deepMask/.git
 
-COPY app/requirements.txt /app/requirements.txt 
-
-RUN python -m pip install -r /app/requirements.txt --find-links https://download.pytorch.org/whl/torch_stable.html
-
-RUN conda install -c conda-forge pygpu==0.7.6
-
-RUN pip cache purge
+RUN eval "$(conda shell.bash hook)" \
+    && conda create -n preprocess python=3.7 \
+    && conda activate preprocess \
+    && python -m pip install -r deepMask/app/requirements.txt \
+    && conda deactivate
 
 COPY app/ /app/
 
-RUN sudo chmod -R 777 /app && sudo chmod +x /app/inference.py
+RUN python -m pip install -r /app/requirements.txt \
+    && conda install -c conda-forge pygpu==0.7.6 \
+    && pip cache purge
 
-RUN git clone --depth 1 https://github.com/NOEL-MNI/deepMask.git && rm -rf deepMask/.git
+RUN sudo chmod -R 777 /app && sudo chmod +x /app/inference.py
 
 CMD ["python3"]
