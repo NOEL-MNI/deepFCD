@@ -59,7 +59,10 @@ cwd = os.path.realpath(os.path.dirname(__file__))
 print(cwd)
 
 if args.brain_masking:
-    args.use_gpu = False
+    if options['cuda'].startswith('cuda'):
+        args.use_gpu = True
+    else:
+        args.use_gpu = False
     # MRI pre-processing configuration
     args.output_suffix = '_brain_final.nii.gz'
 
