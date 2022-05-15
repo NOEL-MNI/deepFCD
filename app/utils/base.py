@@ -297,29 +297,29 @@ def test_scan(model, test_x_data, options, transit=None, save_nifti=False, uncer
 
     if save_nifti:
         # out_scan = nib.Nifti1Image(seg_image, np.eye(4))
-        out_scan = nib.Nifti1Image(seg_image, header=header)
+        out_scan = nib.Nifti1Image(seg_image, affine=None, header=header)
         out_scan.to_filename(os.path.join(options['pred_folder'], options['test_mean_name']))
 
         if uncertainty:
-            out_scan = nib.Nifti1Image(var_image, header=header)
+            out_scan = nib.Nifti1Image(var_image, affine=None, header=header)
             out_scan.to_filename(os.path.join(options['pred_folder'], options['test_var_name']))
 
     if transit is not None:
         if not os.path.exists(test_folder):
             os.mkdir(test_folder)
-        out_scan = nib.Nifti1Image(seg_image, header=header)
+        out_scan = nib.Nifti1Image(seg_image, affine=None, header=header)
         test_name = str.replace(scan, '_flair.nii.gz', '') + '_out_pred_mean_0.nii.gz'
         out_scan.to_filename(os.path.join(test_folder, test_name))
 
         if uncertainty:
-            out_scan = nib.Nifti1Image(var_image, header=header)
+            out_scan = nib.Nifti1Image(var_image, affine=None, header=header)
             test_name = str.replace(scan, '_flair.nii.gz', '') + '_out_pred_var_0.nii.gz'
             out_scan.to_filename(os.path.join(test_folder, test_name))
 
         if not os.path.exists(os.path.join(test_folder, options['experiment'])):
             os.mkdir(os.path.join(test_folder, options['experiment']))
 
-        out_scan = nib.Nifti1Image(seg_image, header=header)
+        out_scan = nib.Nifti1Image(seg_image, affine=None, header=header)
         test_name = str.replace(scan, '_flair.nii.gz', '') + '_out_pred_0.nii.gz'
         out_scan.to_filename(os.path.join(test_folder, test_name))
 
