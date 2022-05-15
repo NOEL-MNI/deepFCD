@@ -49,16 +49,16 @@ args.t2_fname = sys.argv[3]
 args.dir = sys.argv[4]
 if not os.path.isabs(args.dir):
     args.dir = os.path.abspath(args.dir)
-args.brain_masking = sys.argv[6] # set to True or any non-zero value for brain extraction or skull-removal, False otherwise
-args.preprocess = sys.argv[7] # co-register T1 and T2 images to MNI152 space and N3 correction before brain extraction (True/False)
+
+args.brain_masking = int(sys.argv[6]) # set to True or any non-zero value for brain extraction or skull-removal, False otherwise
+args.preprocess = int(sys.argv[7]) # co-register T1 and T2 images to MNI152 space and N3 correction before brain extraction (True/False)
 args.outdir = os.path.join(args.dir, args.id)
 
 args.t1 = os.path.join(args.outdir, args.t1_fname)
 args.t2 = os.path.join(args.outdir, args.t2_fname)
 cwd = os.path.realpath(os.path.dirname(__file__))
-print(cwd)
 
-if args.brain_masking:
+if bool(args.brain_masking):
     if options['cuda'].startswith('cuda'):
         args.use_gpu = True
     else:
