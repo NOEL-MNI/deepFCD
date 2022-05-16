@@ -2,6 +2,7 @@
 
 import os
 import sys
+import logging
 import multiprocessing
 from mo_dots import Data
 import subprocess
@@ -14,6 +15,11 @@ import setproctitle as spt
 from tqdm import tqdm
 from utils.helpers import *
 
+logging.basicConfig(level=logging.DEBUG,
+                    style='{',
+                    datefmt='%Y-%m-%d %H:%M:%S',
+                    format='{asctime} {levelname} {filename}:{lineno}: {message}')
+
 os.environ["KERAS_BACKEND"] = "theano"
 
 # GPU/CPU options
@@ -24,7 +30,7 @@ elif options['cuda'].startswith('cpu'):
     cores = str(multiprocessing.cpu_count() // 2)
     var = os.getenv('OMP_NUM_THREADS', cores)
     try:
-        print("# of threads initialized: {}".format(int(var)))
+        logging.info("# of threads initialized: {}".format(int(var)))
     except ValueError:
         raise TypeError("The environment variable OMP_NUM_THREADS"
                         " should be a number, got '%s'." % var)
@@ -32,7 +38,7 @@ elif options['cuda'].startswith('cpu'):
     os.environ["THEANO_FLAGS"] = "mode=FAST_RUN,device=cpu,openmp=True,floatX=float32"
 else:
     os.environ["THEANO_FLAGS"] = "mode=FAST_RUN,device=cuda0,floatX=float32,dnn.enabled=False"
-print(os.environ["THEANO_FLAGS"])
+logging.info(os.environ["THEANO_FLAGS"])
 
 from models.noel_models_keras import *
 from keras.models import load_model
@@ -72,7 +78,7 @@ if bool(args.brain_masking):
     args.t1 = os.path.join(args.outdir, args.id + '_t1' + args.output_suffix)
     args.t2 = os.path.join(args.outdir, args.id + '_t2' + args.output_suffix)
 else:
-    print("Skipping image preprocessing and brain masking, presumably images are co-registered, bias-corrected, and skull-stripped")
+    logging.info('Skipping image preprocessing and brain masking, presumably images are co-registered, bias-corrected, and skull-stripped')
 
 # deepFCD configuration
 K.set_image_dim_ordering('th')
@@ -93,7 +99,7 @@ options['load_checkpoint_2'] = True
 options['test_folder'] = args.dir
 options['weight_paths'] = os.path.join(cwd, 'weights')
 options['experiment'] = 'noel_deepFCD_dropoutMC'
-print("experiment: {}".format(options['experiment']))
+logging.info("experiment: {}".format(options['experiment']))
 spt.setproctitle(options['experiment'])
 
 # --------------------------------------------------
@@ -105,13 +111,13 @@ model = None
 model = off_the_shelf_model(options)
 
 load_weights = os.path.join(options['weight_paths'], 'noel_deepFCD_dropoutMC_model_1.h5')
-print("loading DNN1, model[0]: {} exists".format(load_weights)) if os.path.isfile(load_weights) else sys.exit("model[0]: {} doesn't exist".format(load_weights))
+logging.info("loading DNN1, model[0]: {} exists".format(load_weights)) if os.path.isfile(load_weights) else sys.exit("model[0]: {} doesn't exist".format(load_weights))
 model[0] = load_model(load_weights)
 
 load_weights = os.path.join(options['weight_paths'], 'noel_deepFCD_dropoutMC_model_2.h5')
-print("loading DNN2, model[1]: {} exists".format(load_weights)) if os.path.isfile(load_weights) else sys.exit("model[1]: {} doesn't exist".format(load_weights))
+logging.info("loading DNN2, model[1]: {} exists".format(load_weights)) if os.path.isfile(load_weights) else sys.exit("model[1]: {} doesn't exist".format(load_weights))
 model[1] = load_model(load_weights)
-print(model[1].summary())
+logging.info(model[1].summary())
 
 # --------------------------------------------------
 # test the cascaded model
@@ -134,16 +140,16 @@ for _, scan in enumerate(tqdm(test_list, desc='serving predictions using the tra
     pred_var_fname = os.path.join(options['pred_folder'], scan + '_prob_var_1.nii.gz')
 
     if np.logical_and(os.path.isfile(pred_mean_fname), os.path.isfile(pred_var_fname)):
-        print("prediction for {} already exists".format(scan))
+        logging.info("prediction for {} already exists".format(scan))
         continue
 
     options['test_scan'] = scan
 
     start = time.time()
-    print('\n')
-    print('-'*70)
-    print("testing the model for scan: {}".format(scan))
-    print('-'*70)
+    logging.info('\n')
+    logging.info('-'*70)
+    logging.info("testing the model for scan: {}".format(scan))
+    logging.info('-'*70)
 
     # test0: prediction/stage1
     # test1: pred/stage2
@@ -153,6 +159,6 @@ for _, scan in enumerate(tqdm(test_list, desc='serving predictions using the tra
 
     end = time.time()
     diff = (end - start) // 60
-    print("-"*70)
-    print("time elapsed: ~ {} minutes".format(diff))
-    print("-"*70)
+    logging.info("-"*70)
+    logging.info("time elapsed: ~ {} minutes".format(diff))
+    logging.info("-"*70)
