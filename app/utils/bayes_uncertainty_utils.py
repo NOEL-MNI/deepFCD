@@ -46,7 +46,7 @@ def test_scan_uncertainty(model, test_x_data, scan, options, intermediate=None, 
     flair_scans = [test_x_data[s]['FLAIR'] for s in scans]
     flair_image = load_nii(flair_scans[0]).get_data()
     header = load_nii(flair_scans[0]).header
-    affine = header.get_qform()
+    # affine = header.get_qform()
     seg_image = np.zeros_like(flair_image)
     var_image = np.zeros_like(flair_image)
     thresh_image = np.zeros_like(flair_image)
@@ -75,11 +75,11 @@ def test_scan_uncertainty(model, test_x_data, scan, options, intermediate=None, 
         if not os.path.exists(test_folder):
             os.mkdir(test_folder)
         # out_scan = nib.Nifti1Image(seg_image, np.eye(4))
-        out_scan = nib.Nifti1Image(seg_image, affine, header)
+        out_scan = nib.Nifti1Image(seg_image, header=header)
         test_name = str.replace(scan, '_flair.nii.gz', '') + '_out_pred_mean_0.nii.gz'
         out_scan.to_filename(os.path.join(test_folder, test_name))
 
-        out_scan = nib.Nifti1Image(var_image, affine, header)
+        out_scan = nib.Nifti1Image(var_image, header=header)
         test_name = str.replace(scan, '_flair.nii.gz', '') + '_out_pred_var_0.nii.gz'
         out_scan.to_filename(os.path.join(test_folder, test_name))
 
@@ -87,7 +87,7 @@ def test_scan_uncertainty(model, test_x_data, scan, options, intermediate=None, 
         if not os.path.exists(os.path.join(test_folder, options['experiment'])):
             os.mkdir(os.path.join(test_folder, options['experiment']))
 
-        out_scan = nib.Nifti1Image(seg_image, affine, header)
+        out_scan = nib.Nifti1Image(seg_image, header=header)
         #out_scan.to_filename(os.path.join(options['test_folder'], options['test_scan'], options['experiment'], options['test_name']))
         test_name = str.replace(scan, '_flair.nii.gz', '') + '_out_pred_0.nii.gz'
         out_scan.to_filename(os.path.join(test_folder, test_name))

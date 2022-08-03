@@ -41,29 +41,38 @@
 2. Keras == 2.2.4
 3. Theano == 1.0.4
 4. ANTsPy == 0.3.2 (for MRI preprocessing)
-5. PyTorch == 1.4.0 (for deepMask)
+4. ANTsPyNet == 0.1.8 (for MRI preprocessing)
+5. PyTorch == 1.11.0 (for deepMask)
 6. h5py == 2.10.0
 + app/requirements.txt
++ app/deepMask/app/requirements.txt
 ```
 
 ## Installation
 
 ```bash
 # clone the repo with the deepMask submodule
-git clone --depth 1 --recurse-submodules -j2 https://github.com/NOEL-MNI/deepFCD.git
+git clone --recurse-submodules -j2 https://github.com/NOEL-MNI/deepFCD.git
 cd deepFCD
 
 # install Miniconda3
 wget https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.sh -O ~/miniconda.sh
 bash ~/miniconda.sh -b -p $HOME/miniconda
 
-# create and activate a Conda environment
+# create and activate a Conda environment for preprocessing
+conda create -n preprocess python=3.7
+conda activate preprocess
+# install dependencies using pip
+python -m pip install -r app/deepMask/app/requirements.txt
+conda deactivate
+
+# create and activate a Conda environment for deepFCD
 conda create -n deepFCD python=3.7
 conda activate deepFCD
-
 # install dependencies using pip
-python -m pip install -r app/requirements.txt --find-links https://download.pytorch.org/whl/torch_stable.html
+python -m pip install -r app/requirements.txt
 conda install -c conda-forge pygpu=0.7.6
+
 ```
 
 
@@ -85,17 +94,36 @@ ${IO_DIRECTORY}
 
 ### 2. Training routine [TODO]
 
-### 3.1 Inference
+### 3.1 Inference (CPU)
 ```bash
-chmod +x ./app/inference.py # make the script executable -ensure you have the requisite permissions
+chmod +x ./app/inference.py   # make the script executable -ensure you have the requisite permissions
+export OMP_NUM_THREADS=6    \ # specify number of threads to initialize when using the CPU - by default this variable is set to half the number of available logical cores
 ./app/inference.py     \ # the script to perform inference on the multimodal MRI images
     ${PATIENT_ID}      \ # prefix for the filenames; for example: FCD_001 (needed for outputs only)
     ${T1_IMAGE}        \ # T1-weighted image; for example: FCD_001_t1.nii.gz or t1.nii.gz [T1 is specified before FLAIR - order is important]
     ${FLAIR_IMAGE}     \ # T2-weighted FLAIR image; for example: FCD_001_t2.nii.gz or flair.nii.gz [T1 is specified before FLAIR - order is important]
     ${IO_DIRECTORY}    \ # input/output directory
-    cuda0                # toggle b/w CPU/GPU - string specifies CPU ('cpu') or GPU ID ('cudaX', where N is in the range (0,N), where N is the total number of installed GPUs)
+    cpu                \ # toggle b/w CPU/GPU - string specifies CPU ('cpu') or GPU ID ('cudaX', where N is in the range (0,N), where N is the total number of installed GPUs)
+    1                  \ # perform (`1`) or not perform (`0`) brain extraction
+    1                  \ # perform (`1`) or not perform (`0`) image pre-processing
+
 ```
-### 3.2 Inference using Docker (GPU)
+
+### 3.2 Inference (GPU)
+```bash
+chmod +x ./app/inference.py   # make the script executable -ensure you have the requisite permissions
+./app/inference.py     \ # the script to perform inference on the multimodal MRI images
+    ${PATIENT_ID}      \ # prefix for the filenames; for example: FCD_001 (needed for outputs only)
+    ${T1_IMAGE}        \ # T1-weighted image; for example: FCD_001_t1.nii.gz or t1.nii.gz [T1 is specified before FLAIR - order is important]
+    ${FLAIR_IMAGE}     \ # T2-weighted FLAIR image; for example: FCD_001_t2.nii.gz or flair.nii.gz [T1 is specified before FLAIR - order is important]
+    ${IO_DIRECTORY}    \ # input/output directory
+    cuda0              \ # toggle b/w CPU/GPU - string specifies CPU ('cpu') or GPU ID ('cudaX', where N is in the range (0,N), where N is the total number of installed GPUs)
+    1                  \ # perform (`1`) or not perform (`0`) brain extraction
+    1                  \ # perform (`1`) or not perform (`0`) image pre-processing
+
+```
+
+### 3.3 Inference using Docker (GPU), requires [nvidia-container-toolkit](https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/install-guide.html)
 ```bash
 docker run --rm -it --init \
     --gpus=all                 \ # expose the host GPUs to the guest docker container
@@ -107,21 +135,26 @@ docker run --rm -it --init \
     ${T1_IMAGE}        \ # T1-weighted image; for example: FCD_001_t1.nii.gz or t1.nii.gz [T1 is specified before FLAIR - order is important]
     ${FLAIR_IMAGE}     \ # T2-weighted FLAIR image; for example: FCD_001_t2.nii.gz or flair.nii.gz [T1 is specified before FLAIR - order is important]
     /io                \ # input/output directory within the container mapped to ${IO_DIRECTORY} or ${PWD} [ DO NOT MODIFY]
-    cuda0                # toggle b/w CPU/GPU - string specifies CPU ('cpu') or GPU ID ('cudaX', where N is in the range (0,N), where N is the total number of installed GPUs)
+    cuda0              \ # toggle b/w CPU/GPU - string specifies CPU ('cpu') or GPU ID ('cudaX', where N is in the range (0,N), where N is the total number of installed GPUs)
+    1                  \ # perform (`1`) or not perform (`0`) brain extraction
+    1                  \ # perform (`1`) or not perform (`0`) image pre-processing
 ```
 
-### 3.3 Inference using Docker (CPU)
+### 3.4 Inference using Docker (CPU)
 ```bash
 docker run --rm -it --init \
     --user="$(id -u):$(id -g)" \ # map user permissions appropriately
     --volume="$PWD:/io"        \ # $PWD refers to the present working directory containing the input images, can be modified to a local host directory
+    --env OMP_NUM_THREADS=6    \ # specify number of threads to initialize - by default this variable is set to half the number of available logical cores
     noelmni/deep-fcd:latest    \ # docker image containing all the necessary software dependencies
     /app/inference.py  \ # the script to perform inference on the multimodal MRI images
     ${PATIENT_ID}      \ # prefix for the filenames; for example: FCD_001 (needed for outputs only)
     ${T1_IMAGE}        \ # T1-weighted image; for example: FCD_001_t1.nii.gz or t1.nii.gz [T1 is specified before FLAIR - order is important]
     ${FLAIR_IMAGE}     \ # T2-weighted FLAIR image; for example: FCD_001_t2.nii.gz or flair.nii.gz [T1 is specified before FLAIR - order is important]
     /io                \ # input/output directory within the container mapped to ${IO_DIRECTORY} or ${PWD} [ DO NOT MODIFY]
-    cpu                  # toggle b/w CPU/GPU - string specifies CPU ('cpu') or GPU ID ('cudaX', where N is in the range (0,N), where N is the total number of installed GPUs)
+    cpu                \ # toggle b/w CPU/GPU - string specifies CPU ('cpu') or GPU ID ('cudaX', where N is in the range (0,N), where N is the total number of installed GPUs)
+    1                  \ # perform (`1`) or not perform (`0`) brain extraction
+    1                  \ # perform (`1`) or not perform (`0`) image pre-processing
 ```
 
 ## License
