@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-
+#%%
 import os
 import sys
 import logging
@@ -8,7 +8,8 @@ from mo_dots import Data
 import subprocess
 from config.experiment import options
 import warnings
-warnings.filterwarnings('ignore')
+
+warnings.filterwarnings("ignore")
 import time
 import numpy as np
 import setproctitle as spt
@@ -89,11 +90,11 @@ modalities = ['T1', 'FLAIR']
 x_names = options['x_names']
 
 # seed = options['seed']
-options['dropout_mc'] = True
-options['batch_size'] = 350000
-options['mini_batch_size'] = 2048
-options['load_checkpoint_1'] = True
-options['load_checkpoint_2'] = True
+options["dropout_mc"] = True
+options["batch_size"] = 350000
+options["mini_batch_size"] = 2048
+options["load_checkpoint_1"] = True
+options["load_checkpoint_2"] = True
 
 # trained model weights based on 148 histologically-verified FCD subjects
 options['test_folder'] = args.dir
@@ -124,26 +125,51 @@ logging.info(model[1].summary())
 # --------------------------------------------------
 # test_list = ['mcd_0468_1']
 test_list = [args.id]
-files = [args.t1, args.t2]
-test_data = {}
-test_data = {f: {m: os.path.join(options['test_folder'], f, n) for m, n in zip(modalities, files)} for f in test_list}
+# t1_file = sys.argv[3]
+# t2_file = sys.argv[4]
+t1_file = args.t1
+t2_file = args.t2
 
-for _, scan in enumerate(tqdm(test_list, desc='serving predictions using the trained model', colour='blue')):
+t1_transform = os.path.join(args.outdir, args.id + "_t12mni_0.mat")
+t2_transform = os.path.join(args.outdir, args.id + "_t22mni_0.mat")
+
+files = [args.t1, args.t2]
+
+orig_files = {'T1':args.t1,'FLAIR':args.t2}
+
+transform_files = [t1_transform, t2_transform]
+# files = {}
+# files['T1'], files['FLAIR'] = str(t1_file), t2_file
+test_data = {}
+# test_data = {f: {m: os.path.join(tfolder, f, m+'_stripped.nii.gz') for m in modalities} for f in test_list}
+test_data = {f: {m: os.path.join(options['test_folder'], f, n) for m, n in zip(modalities, files)} for f in test_list}
+test_tranforms =  {f: {m: n for m, n in zip(modalities, transform_files)} for f in test_list}
+# test_data = {f: {m: os.path.join(options['test_folder'], f, n) for m, n in zip(modalities, files)} for f in test_list}
+
+for _, scan in enumerate(
+    tqdm(test_list, desc="serving predictions using the trained model", colour="blue")
+):
+    print('scan is', scan)
     t_data = {}
     t_data[scan] = test_data[scan]
+    transforms = {}
+    print('test transform scan is', test_tranforms[scan])
+    transforms[scan] = test_tranforms[scan]
 
-    options['pred_folder'] = os.path.join(options['test_folder'], scan, options['experiment'])
-    if not os.path.exists(options['pred_folder']):
-        os.mkdir(options['pred_folder'])
+    options["pred_folder"] = os.path.join(
+        options["test_folder"], scan, options["experiment"]
+    )
+    if not os.path.exists(options["pred_folder"]):
+        os.mkdir(options["pred_folder"])
 
-    pred_mean_fname = os.path.join(options['pred_folder'], scan + '_prob_mean_1.nii.gz')
-    pred_var_fname = os.path.join(options['pred_folder'], scan + '_prob_var_1.nii.gz')
+    pred_mean_fname = os.path.join(options["pred_folder"], scan + "_prob_mean_1.nii.gz")
+    pred_var_fname = os.path.join(options["pred_folder"], scan + "_prob_var_1.nii.gz")
 
     if np.logical_and(os.path.isfile(pred_mean_fname), os.path.isfile(pred_var_fname)):
         logging.info("prediction for {} already exists".format(scan))
         continue
 
-    options['test_scan'] = scan
+    options["test_scan"] = scan
 
     start = time.time()
     logging.info('\n')
@@ -155,7 +181,7 @@ for _, scan in enumerate(tqdm(test_list, desc='serving predictions using the tra
     # test1: pred/stage2
     # test2: morphological processing + contiguous clusters
     # pred0, pred1, postproc, _, _ = test_model(model, t_data, options)
-    test_model(model, t_data, options)
+    test_model(model, t_data, options, transforms=transforms, orig_files=orig_files)
 
     end = time.time()
     diff = (end - start) // 60
