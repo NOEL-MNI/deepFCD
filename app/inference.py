@@ -129,8 +129,8 @@ test_list = [args.id]
 t1_file = args.t1
 t2_file = args.t2
 
-t1_transform = os.path.join(args.outdir, args.id + "_t12mni_0.mat")
-t2_transform = os.path.join(args.outdir, args.id + "_t22mni_0.mat")
+t1_transform = os.path.join(args.outdir, "transforms", args.id + "_t1-native-to-MNI152.mat")
+t2_transform = os.path.join(args.outdir, "transforms", args.id + "_t2-native-to-MNI152.mat")
 
 files = [args.t1, args.t2]
 
