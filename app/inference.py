@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-#%%
+
 import os
 import sys
 import logging
@@ -8,8 +8,7 @@ from mo_dots import Data
 import subprocess
 from config.experiment import options
 import warnings
-
-warnings.filterwarnings("ignore")
+warnings.filterwarnings('ignore')
 import time
 import numpy as np
 import setproctitle as spt
@@ -90,11 +89,11 @@ modalities = ['T1', 'FLAIR']
 x_names = options['x_names']
 
 # seed = options['seed']
-options["dropout_mc"] = True
-options["batch_size"] = 350000
-options["mini_batch_size"] = 2048
-options["load_checkpoint_1"] = True
-options["load_checkpoint_2"] = True
+options['dropout_mc'] = True
+options['batch_size'] = 350000
+options['mini_batch_size'] = 2048
+options['load_checkpoint_1'] = True
+options['load_checkpoint_2'] = True
 
 # trained model weights based on 148 histologically-verified FCD subjects
 options['test_folder'] = args.dir
@@ -146,9 +145,7 @@ test_data = {f: {m: os.path.join(options['test_folder'], f, n) for m, n in zip(m
 test_tranforms =  {f: {m: n for m, n in zip(modalities, transform_files)} for f in test_list}
 # test_data = {f: {m: os.path.join(options['test_folder'], f, n) for m, n in zip(modalities, files)} for f in test_list}
 
-for _, scan in enumerate(
-    tqdm(test_list, desc="serving predictions using the trained model", colour="blue")
-):
+for _, scan in enumerate(tqdm(test_list, desc='serving predictions using the trained model', colour='blue')):
     print('scan is', scan)
     t_data = {}
     t_data[scan] = test_data[scan]
@@ -156,20 +153,18 @@ for _, scan in enumerate(
     print('test transform scan is', test_tranforms[scan])
     transforms[scan] = test_tranforms[scan]
 
-    options["pred_folder"] = os.path.join(
-        options["test_folder"], scan, options["experiment"]
-    )
-    if not os.path.exists(options["pred_folder"]):
-        os.mkdir(options["pred_folder"])
+    options['pred_folder'] = os.path.join(options['test_folder'], scan, options['experiment'])
+    if not os.path.exists(options['pred_folder']):
+        os.mkdir(options['pred_folder'])
 
-    pred_mean_fname = os.path.join(options["pred_folder"], scan + "_prob_mean_1.nii.gz")
-    pred_var_fname = os.path.join(options["pred_folder"], scan + "_prob_var_1.nii.gz")
+    pred_mean_fname = os.path.join(options['pred_folder'], scan + '_prob_mean_1.nii.gz')
+    pred_var_fname = os.path.join(options['pred_folder'], scan + '_prob_var_1.nii.gz')
 
     if np.logical_and(os.path.isfile(pred_mean_fname), os.path.isfile(pred_var_fname)):
         logging.info("prediction for {} already exists".format(scan))
         continue
 
-    options["test_scan"] = scan
+    options['test_scan'] = scan
 
     start = time.time()
     logging.info('\n')
