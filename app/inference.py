@@ -176,7 +176,7 @@ for _, scan in enumerate(tqdm(test_list, desc='serving predictions using the tra
     # test1: pred/stage2
     # test2: morphological processing + contiguous clusters
     # pred0, pred1, postproc, _, _ = test_model(model, t_data, options)
-    test_model(model, t_data, options, transforms=transforms, orig_files=orig_files)
+    test_model(model, t_data, options, transforms=transforms, orig_files=orig_files, invert_xfrm=True)
 
     end = time.time()
     diff = (end - start) // 60
