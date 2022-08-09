@@ -22,6 +22,9 @@ args = to_data(vars(parser.parse_args()))
  
 # set up parameters
 args.outdir = os.path.join(args.dir, args.id)
+args.tmpdir = os.path.join(args.outdir, "tmp")
+if not os.path.exists(args.tmpdir):
+    os.makedirs(args.tmpdir)
 args.t1 = os.path.join(args.outdir, args.t1_fname)
 args.t2 = os.path.join(args.outdir, args.t2_fname)
 args.seed = 666
