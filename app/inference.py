@@ -146,11 +146,9 @@ test_tranforms =  {f: {m: n for m, n in zip(modalities, transform_files)} for f 
 # test_data = {f: {m: os.path.join(options['test_folder'], f, n) for m, n in zip(modalities, files)} for f in test_list}
 
 for _, scan in enumerate(tqdm(test_list, desc='serving predictions using the trained model', colour='blue')):
-    print('scan is', scan)
     t_data = {}
     t_data[scan] = test_data[scan]
     transforms = {}
-    print('test transform scan is', test_tranforms[scan])
     transforms[scan] = test_tranforms[scan]
 
     options['pred_folder'] = os.path.join(options['test_folder'], scan, options['experiment'])
