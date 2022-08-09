@@ -50,11 +50,13 @@ RUN eval "$(conda shell.bash hook)" \
     && python -m pip install -r deepMask/app/requirements.txt \
     && conda deactivate
 
-COPY app/ /app/
+COPY app/requirements.txt /app/requirements.txt
 
 RUN python -m pip install -r /app/requirements.txt \
     && conda install -c conda-forge pygpu==0.7.6 \
     && pip cache purge
+
+COPY app/ /app/
 
 RUN sudo chmod -R 777 /app && sudo chmod +x /app/inference.py
 
