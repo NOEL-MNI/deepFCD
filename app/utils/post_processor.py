@@ -57,9 +57,9 @@ def post_processing(input_scan, options, header, save_nifti=True):
 
     #save the output segmentation as nifti
     if save_nifti:
-        nii_out = nib.Nifti1Image(output_scan, header=header)
+        nii_out = nib.Nifti1Image(output_scan, affine=header.get_qform(), header=header)
         nii_out.to_filename(os.path.join(options['pred_folder'], options['test_name']))
-        labels_out = nib.Nifti1Image(labels_scan, header=header)
+        labels_out = nib.Nifti1Image(labels_scan, affine=header.get_qform(), header=header)
         labels_out.to_filename(os.path.join(options['pred_folder'], options['test_morph_name']))
     return output_scan, pred_labels, count
 
