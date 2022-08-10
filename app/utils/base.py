@@ -289,7 +289,7 @@ def apply_transforms(pred_mean_img, pred_var_img, transforms, orig_files, invert
         if uncertainty:
             pred_var_xfmd = ants.apply_ants_transform_to_image(transform=xfrm, image=pred_var_img, reference=ants.image_read(orig_files[m]), interpolation="nearestneighbor")
             pred_var_xfmd.to_filename(os.path.join(options['pred_folder'], options['test_var_name'].replace(".nii.gz", "_native-"+m+".nii.gz")))
-        pred_mean_xfmd = ants.apply_ants_transform_to_image(transform=xfrm, image=pred_mean_img, reference=ants.image_read(orig_files[m]))
+        pred_mean_xfmd = ants.apply_ants_transform_to_image(transform=xfrm, image=pred_mean_img, reference=ants.image_read(orig_files[m]), interpolation="nearestneighbor")
         pred_mean_xfmd.to_filename(os.path.join(options['pred_folder'], options['test_mean_name'].replace(".nii.gz", "_native-"+m+".nii.gz")))
 
 
