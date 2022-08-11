@@ -289,8 +289,12 @@ def apply_transforms(pred_mean_img, pred_var_img, transforms, orig_files, invert
         if uncertainty:
             pred_var_xfmd = ants.apply_ants_transform_to_image(transform=xfrm, image=pred_var_img, reference=ants.image_read(orig_files[m]), interpolation="nearestneighbor")
             pred_var_xfmd.to_filename(os.path.join(options['pred_folder'], options['test_var_name'].replace(".nii.gz", "_native-"+m+".nii.gz")))
+            # pred_var_xfmd = ants.resample_image_to_target(image=pred_var_xfmd, target=ants.image_read(orig_files[m]), verbose=True, interp_type="nearestNeighbor")
+            # pred_var_xfmd.to_filename(os.path.join(options['pred_folder'], options['test_var_name'].replace(".nii.gz", "_native_rsl-"+m+".nii.gz")))
         pred_mean_xfmd = ants.apply_ants_transform_to_image(transform=xfrm, image=pred_mean_img, reference=ants.image_read(orig_files[m]), interpolation="nearestneighbor")
         pred_mean_xfmd.to_filename(os.path.join(options['pred_folder'], options['test_mean_name'].replace(".nii.gz", "_native-"+m+".nii.gz")))
+        # pred_mean_xfmd = ants.resample_image_to_target(image=pred_mean_xfmd, target=ants.image_read(orig_files[m]), verbose=True, interp_type="nearestNeighbor")
+        # pred_mean_xfmd.to_filename(os.path.join(options['pred_folder'], options['test_mean_name'].replace(".nii.gz", "_native_rsl-"+m+".nii.gz")))
 
 
 def test_scan(model, test_x_data, options, transit=None, save_nifti=False, uncertainty=False, candidate_mask=None, T=20):
