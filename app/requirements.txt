@@ -1,3 +1,4 @@
+antspyx==0.3.2
 Theano==1.0.4
 keras==2.2.4
 h5py==2.10.0

@@ -35,9 +35,11 @@ USER user
 ENV HOME=/home/user
 RUN chmod 777 /home/user
 
-RUN wget --quiet https://repo.anaconda.com/miniconda/Miniconda3-py37_4.11.0-Linux-x86_64.sh \
-    && /bin/bash Miniconda3-py37_4.11.0-Linux-x86_64.sh -b -p /home/user/conda \
-    && rm -f Miniconda3-py37_4.11.0-Linux-x86_64.sh
+RUN wget --quiet https://repo.anaconda.com/miniconda/Miniconda3-py37_4.12.0-Linux-x86_64.sh \
+    && /bin/bash Miniconda3-py37_4.12.0-Linux-x86_64.sh -b -p /home/user/conda \
+    && rm -f Miniconda3-py37_4.12.0-Linux-x86_64.sh
+
+RUN conda update -n base -c defaults conda
 
 RUN git clone --depth 1 https://github.com/NOEL-MNI/deepMask.git \
     && rm -rf deepMask/.git
@@ -48,11 +50,13 @@ RUN eval "$(conda shell.bash hook)" \
     && python -m pip install -r deepMask/app/requirements.txt \
     && conda deactivate
 
-COPY app/ /app/
+COPY app/requirements.txt /app/requirements.txt
 
 RUN python -m pip install -r /app/requirements.txt \
     && conda install -c conda-forge pygpu==0.7.6 \
     && pip cache purge
+
+COPY app/ /app/
 
 RUN sudo chmod -R 777 /app && sudo chmod +x /app/inference.py
 

@@ -124,13 +124,32 @@ logging.info(model[1].summary())
 # --------------------------------------------------
 # test_list = ['mcd_0468_1']
 test_list = [args.id]
+# t1_file = sys.argv[3]
+# t2_file = sys.argv[4]
+t1_file = args.t1
+t2_file = args.t2
+
+t1_transform = os.path.join(args.outdir, "transforms", args.id + "_t1-native-to-MNI152.mat")
+t2_transform = os.path.join(args.outdir, "transforms", args.id + "_t2-native-to-MNI152.mat")
+
 files = [args.t1, args.t2]
+
+orig_files = {'T1':args.t1,'FLAIR':args.t2}
+
+transform_files = [t1_transform, t2_transform]
+# files = {}
+# files['T1'], files['FLAIR'] = str(t1_file), t2_file
 test_data = {}
+# test_data = {f: {m: os.path.join(tfolder, f, m+'_stripped.nii.gz') for m in modalities} for f in test_list}
 test_data = {f: {m: os.path.join(options['test_folder'], f, n) for m, n in zip(modalities, files)} for f in test_list}
+test_tranforms =  {f: {m: n for m, n in zip(modalities, transform_files)} for f in test_list}
+# test_data = {f: {m: os.path.join(options['test_folder'], f, n) for m, n in zip(modalities, files)} for f in test_list}
 
 for _, scan in enumerate(tqdm(test_list, desc='serving predictions using the trained model', colour='blue')):
     t_data = {}
     t_data[scan] = test_data[scan]
+    transforms = {}
+    transforms[scan] = test_tranforms[scan]
 
     options['pred_folder'] = os.path.join(options['test_folder'], scan, options['experiment'])
     if not os.path.exists(options['pred_folder']):
@@ -155,7 +174,7 @@ for _, scan in enumerate(tqdm(test_list, desc='serving predictions using the tra
     # test1: pred/stage2
     # test2: morphological processing + contiguous clusters
     # pred0, pred1, postproc, _, _ = test_model(model, t_data, options)
-    test_model(model, t_data, options)
+    test_model(model, t_data, options, transforms=transforms, orig_files=orig_files, invert_xfrm=True)
 
     end = time.time()
     diff = (end - start) // 60
