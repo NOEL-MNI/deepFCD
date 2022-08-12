@@ -1,10 +1,13 @@
-import os, subprocess
+import os
+import subprocess
+
+import nibabel as nib
 import numpy as np
-from utils.metrics import *
-from sklearn.metrics import cohen_kappa_score
 from scipy import ndimage as nd
 from scipy.ndimage import binary_opening
-import nibabel as nib
+from sklearn.metrics import cohen_kappa_score
+
+from utils.metrics import *
 
 
 def post_processing(input_scan, options, header, save_nifti=True):

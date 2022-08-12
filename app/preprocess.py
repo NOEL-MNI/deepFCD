@@ -1,12 +1,14 @@
 import os
-from mo_dots import to_data
+from argparse import ArgumentDefaultsHelpFormatter, ArgumentParser
+
 import psutil
 import torch
-from argparse import ArgumentParser, ArgumentDefaultsHelpFormatter
+from mo_dots import to_data
+
+import deepMask.app.vnet as vnet
 from deepMask.app.utils.data import *
 from deepMask.app.utils.deepmask import *
 from deepMask.app.utils.image_processing import noelImageProcessor
-import deepMask.app.vnet as vnet
 
 # configuration
 # parse command line arguments

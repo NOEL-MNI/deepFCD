@@ -1,5 +1,9 @@
+import collections
+import sys
+import time
+
 import numpy as np
-import sys, time, collections
+
 
 def batch_shuffle(index_array, batch_size):
     """Shuffles an array in a batch-wise fashion.

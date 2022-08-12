@@ -6,14 +6,17 @@ os.environ["KERAS_BACKEND"] = "theano"
 os.environ["THEANO_FLAGS"] = "mode=FAST_RUN,device=cpu,floatX=float32"
 print(os.environ["THEANO_FLAGS"])
 
-import time
 import string
-from keras import backend as K
-# from keras.utils import to_categorical
+import time
 
-from utils.metrics import *
+from keras import backend as K
+
 # from utils.base import *
 from utils.h5data import *
+from utils.metrics import *
+
+# from keras.utils import to_categorical
+
 # import utils.h5data as h5d
 
 # set configuration parameters

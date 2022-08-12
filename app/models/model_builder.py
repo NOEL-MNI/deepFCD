@@ -1,12 +1,15 @@
-from keras.models import Model
-from keras.layers import Input, Conv3D, MaxPooling3D, Dropout, Flatten, Activation
-from keras.layers.convolutional import MaxPooling3D, Conv3D
+from keras import backend as K
+from keras.layers import (Activation, Conv3D, Dropout, Flatten, Input,
+                          MaxPooling3D)
+from keras.layers.convolutional import Conv3D, MaxPooling3D
 from keras.layers.normalization import BatchNormalization
+from keras.models import Model
+
 # from keras.layers.advanced_activations import PReLU, LeakyReLU
 
-from keras import backend as K
 K.set_image_dim_ordering('th')
 import warnings
+
 warnings.filterwarnings('ignore')
 
 

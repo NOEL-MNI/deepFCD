@@ -1,11 +1,13 @@
 import os
-import numpy as np
-from scipy.ndimage import binary_dilation
-from nibabel import load as load_nii
+from operator import add, itemgetter
+
 import nibabel as nib
-from operator import itemgetter, add
-from tqdm import trange
+import numpy as np
 from keras import backend as K
+from nibabel import load as load_nii
+from scipy.ndimage import binary_dilation
+from tqdm import trange
+
 from utils.keras_bayes_utils import *
 
 

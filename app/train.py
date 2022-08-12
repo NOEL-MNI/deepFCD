@@ -1,7 +1,12 @@
 #!/usr/bin/env python3
 
-import os, sys, socket, time, json
+import json
 import multiprocessing
+import os
+import socket
+import sys
+import time
+
 from config.experiment import options
 
 hostname = socket.getfqdn()
@@ -27,16 +32,15 @@ else:
 print(os.environ["THEANO_FLAGS"])
 
 import numpy as np
-from nibabel import load as load_nii
 import pandas as pd
 import setproctitle as spt
+from keras import backend as K
+from nibabel import load as load_nii
 from tqdm import tqdm
 
 from models.noel_models_keras import *
-from keras import backend as K
-
-from utils.metrics import *
 from utils.base import *
+from utils.metrics import *
 
 K.set_image_dim_ordering("th")
 K.set_image_data_format("channels_first")  # TH dimension ordering in this code

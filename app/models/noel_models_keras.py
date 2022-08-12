@@ -1,7 +1,8 @@
-from models.model_builder import *
-from keras.utils import multi_gpu_model
-from keras.optimizers import Adadelta
 from keras import losses
+from keras.optimizers import Adadelta
+from keras.utils import multi_gpu_model
+
+from models.model_builder import *
 
 
 def off_the_shelf_model(options):

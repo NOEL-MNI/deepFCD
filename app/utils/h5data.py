@@ -1,11 +1,14 @@
-import numpy as np
+from operator import add, itemgetter
+
 import h5py
+import numpy as np
+from nibabel import load as load_nii
+from scipy.ndimage import binary_dilation
 from tqdm import tqdm
 from tqdm.contrib import tzip
-from scipy.ndimage import binary_dilation
-from nibabel import load as load_nii
-from operator import itemgetter, add
-from .patch_dataloader import binarize_label_gm, select_voxels_from_previous_model
+
+from .patch_dataloader import (binarize_label_gm,
+                               select_voxels_from_previous_model)
 
 
 def create_dataset(data_path, X, y):

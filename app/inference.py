@@ -1,18 +1,23 @@
 #!/usr/bin/env python3
 
-import os
-import sys
 import logging
 import multiprocessing
-from mo_dots import Data
+import os
 import subprocess
-from config.experiment import options
+import sys
 import warnings
+
+from mo_dots import Data
+
+from config.experiment import options
+
 warnings.filterwarnings('ignore')
 import time
+
 import numpy as np
 import setproctitle as spt
 from tqdm import tqdm
+
 from utils.helpers import *
 
 logging.basicConfig(level=logging.DEBUG,
@@ -40,12 +45,12 @@ else:
     os.environ["THEANO_FLAGS"] = "mode=FAST_RUN,device=cuda0,floatX=float32,dnn.enabled=False"
 logging.info(os.environ["THEANO_FLAGS"])
 
-from models.noel_models_keras import *
-from keras.models import load_model
 from keras import backend as K
-from utils.metrics import *
-from utils.base import *
+from keras.models import load_model
 
+from models.noel_models_keras import *
+from utils.base import *
+from utils.metrics import *
 
 # configuration
 args = Data()

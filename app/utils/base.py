@@ -1,20 +1,23 @@
+import json
 import os
 import time
+from shutil import copyfile
+
+import ants
+import h5py
+import nibabel as nib
 import numpy as np
 import pandas as pd
-from shutil import copyfile
-import h5py
-from nibabel import load as load_nii
-import nibabel as nib
+from keras.callbacks import (CSVLogger, EarlyStopping, LambdaCallback,
+                             ModelCheckpoint)
 from keras.models import load_model
-from keras.callbacks import EarlyStopping, CSVLogger, ModelCheckpoint, LambdaCallback
-from keras.utils.np_utils import to_categorical
 from keras.utils.io_utils import HDF5Matrix
-import json
+from keras.utils.np_utils import to_categorical
+from nibabel import load as load_nii
 from sklearn.model_selection import LeaveOneGroupOut
+
 from utils.patch_dataloader import *
 from utils.post_processor import *
-import ants
 
 
 def print_data_shape(X):

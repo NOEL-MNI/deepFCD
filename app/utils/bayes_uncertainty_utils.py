@@ -1,11 +1,13 @@
 import os
-import numpy as np
-from tqdm import trange
-from pynvml import *
-from nibabel import load as load_nii
+
 import nibabel as nib
+import numpy as np
+from nibabel import load as load_nii
+from pynvml import *
+from tqdm import trange
 
 from utils.patch_dataloader import *
+
 
 def test_scan_uncertainty(model, test_x_data, scan, options, intermediate=None, save_nifti=False, uncertainty=True, candidate_mask=None, T=20):
     """
