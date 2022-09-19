@@ -18,8 +18,8 @@ def batch_shuffle(index_array, batch_size):
     batch_count = int(len(index_array) / batch_size)
     # to reshape we need to be cleanly divisible by batch size
     # we stash extra items and reappend them after shuffling
-    last_batch = index_array[batch_count * batch_size:]
-    index_array = index_array[:batch_count * batch_size]
+    last_batch = index_array[batch_count * batch_size :]
+    index_array = index_array[: batch_count * batch_size]
     index_array = index_array.reshape((batch_count, batch_size))
     np.random.shuffle(index_array)
     index_array = index_array.flatten()
@@ -35,14 +35,12 @@ def make_batches(size, batch_size):
         A list of tuples of array indices.
     """
     num_batches = (size + batch_size - 1) // batch_size  # round up
-    return [(i * batch_size, min(size, (i + 1) * batch_size))
-            for i in range(num_batches)]
+    return [
+        (i * batch_size, min(size, (i + 1) * batch_size)) for i in range(num_batches)
+    ]
 
 
-def check_num_samples(ins,
-                      batch_size=None,
-                      steps=None,
-                      steps_name='steps'):
+def check_num_samples(ins, batch_size=None, steps=None, steps_name="steps"):
     """Checks the number of samples provided for training and evaluation.
     The number of samples is not defined when running with `steps`,
     in which case the number of samples is set to `None`.
@@ -67,20 +65,20 @@ def check_num_samples(ins,
         ValueError: In case of invalid arguments.
     """
     if steps is not None and batch_size is not None:
-        raise ValueError(
-            'If ' + steps_name + ' is set, the `batch_size` must be None.')
+        raise ValueError("If " + steps_name + " is set, the `batch_size` must be None.")
 
     if not ins or any(K.is_tensor(x) for x in ins):
         if steps is None:
             raise ValueError(
-                'If your data is in the form of symbolic tensors, '
-                'you should specify the `' + steps_name + '` argument '
-                '(instead of the `batch_size` argument, '
-                'because symbolic tensors are expected to produce '
-                'batches of input data).')
+                "If your data is in the form of symbolic tensors, "
+                "you should specify the `" + steps_name + "` argument "
+                "(instead of the `batch_size` argument, "
+                "because symbolic tensors are expected to produce "
+                "batches of input data)."
+            )
         return None
 
-    if hasattr(ins[0], 'shape'):
+    if hasattr(ins[0], "shape"):
         return int(ins[0].shape[0])
     return None  # Edge case where ins == [static_learning_phase]
 
@@ -98,8 +96,9 @@ class Progbar(object):
         interval: Minimum visual progress update interval (in seconds).
     """
 
-    def __init__(self, target, width=30, verbose=1, interval=0.05,
-                 stateful_metrics=None):
+    def __init__(
+        self, target, width=30, verbose=1, interval=0.05, stateful_metrics=None
+    ):
         self.target = target
         self.width = width
         self.verbose = verbose
@@ -109,9 +108,9 @@ class Progbar(object):
         else:
             self.stateful_metrics = set()
 
-        self._dynamic_display = ((hasattr(sys.stdout, 'isatty') and
-                                  sys.stdout.isatty()) or
-                                 'ipykernel' in sys.modules)
+        self._dynamic_display = (
+            hasattr(sys.stdout, "isatty") and sys.stdout.isatty()
+        ) or "ipykernel" in sys.modules
         self._total_width = 0
         self._seen_so_far = 0
         self._values = collections.OrderedDict()
@@ -132,11 +131,13 @@ class Progbar(object):
         for k, v in values:
             if k not in self.stateful_metrics:
                 if k not in self._values:
-                    self._values[k] = [v * (current - self._seen_so_far),
-                                       current - self._seen_so_far]
+                    self._values[k] = [
+                        v * (current - self._seen_so_far),
+                        current - self._seen_so_far,
+                    ]
                 else:
                     self._values[k][0] += v * (current - self._seen_so_far)
-                    self._values[k][1] += (current - self._seen_so_far)
+                    self._values[k][1] += current - self._seen_so_far
             else:
                 # Stateful metrics output a numeric value.  This representation
                 # means "take an average from a single value" but keeps the
@@ -145,35 +146,38 @@ class Progbar(object):
         self._seen_so_far = current
 
         now = time.time()
-        info = ' - %.0fs' % (now - self._start)
+        info = " - %.0fs" % (now - self._start)
         if self.verbose == 1:
-            if (now - self._last_update < self.interval and
-                    self.target is not None and current < self.target):
+            if (
+                now - self._last_update < self.interval
+                and self.target is not None
+                and current < self.target
+            ):
                 return
 
             prev_total_width = self._total_width
             if self._dynamic_display:
-                sys.stdout.write('\b' * prev_total_width)
-                sys.stdout.write('\r')
+                sys.stdout.write("\b" * prev_total_width)
+                sys.stdout.write("\r")
             else:
-                sys.stdout.write('\n')
+                sys.stdout.write("\n")
 
             if self.target is not None:
                 numdigits = int(np.floor(np.log10(self.target))) + 1
-                barstr = '%%%dd/%d [' % (numdigits, self.target)
+                barstr = "%%%dd/%d [" % (numdigits, self.target)
                 bar = barstr % current
                 prog = float(current) / self.target
                 prog_width = int(self.width * prog)
                 if prog_width > 0:
-                    bar += ('=' * (prog_width - 1))
+                    bar += "=" * (prog_width - 1)
                     if current < self.target:
-                        bar += '>'
+                        bar += ">"
                     else:
-                        bar += '='
-                bar += ('.' * (self.width - prog_width))
-                bar += ']'
+                        bar += "="
+                bar += "." * (self.width - prog_width)
+                bar += "]"
             else:
-                bar = '%7d/Unknown' % current
+                bar = "%7d/Unknown" % current
 
             self._total_width = len(bar)
             sys.stdout.write(bar)
@@ -185,40 +189,42 @@ class Progbar(object):
             if self.target is not None and current < self.target:
                 eta = time_per_unit * (self.target - current)
                 if eta > 3600:
-                    eta_format = ('%d:%02d:%02d' %
-                                  (eta // 3600, (eta % 3600) // 60, eta % 60))
+                    eta_format = "%d:%02d:%02d" % (
+                        eta // 3600,
+                        (eta % 3600) // 60,
+                        eta % 60,
+                    )
                 elif eta > 60:
-                    eta_format = '%d:%02d' % (eta // 60, eta % 60)
+                    eta_format = "%d:%02d" % (eta // 60, eta % 60)
                 else:
-                    eta_format = '%ds' % eta
+                    eta_format = "%ds" % eta
 
-                info = ' - ETA: %s' % eta_format
+                info = " - ETA: %s" % eta_format
             else:
                 if time_per_unit >= 1:
-                    info += ' %.0fs/step' % time_per_unit
+                    info += " %.0fs/step" % time_per_unit
                 elif time_per_unit >= 1e-3:
-                    info += ' %.0fms/step' % (time_per_unit * 1e3)
+                    info += " %.0fms/step" % (time_per_unit * 1e3)
                 else:
-                    info += ' %.0fus/step' % (time_per_unit * 1e6)
+                    info += " %.0fus/step" % (time_per_unit * 1e6)
 
             for k in self._values:
-                info += ' - %s:' % k
+                info += " - %s:" % k
                 if isinstance(self._values[k], list):
-                    avg = np.mean(
-                        self._values[k][0] / max(1, self._values[k][1]))
+                    avg = np.mean(self._values[k][0] / max(1, self._values[k][1]))
                     if abs(avg) > 1e-3:
-                        info += ' %.4f' % avg
+                        info += " %.4f" % avg
                     else:
-                        info += ' %.4e' % avg
+                        info += " %.4e" % avg
                 else:
-                    info += ' %s' % self._values[k]
+                    info += " %s" % self._values[k]
 
             self._total_width += len(info)
             if prev_total_width > self._total_width:
-                info += (' ' * (prev_total_width - self._total_width))
+                info += " " * (prev_total_width - self._total_width)
 
             if self.target is not None and current >= self.target:
-                info += '\n'
+                info += "\n"
 
             sys.stdout.write(info)
             sys.stdout.flush()
@@ -226,14 +232,13 @@ class Progbar(object):
         elif self.verbose == 2:
             if self.target is None or current >= self.target:
                 for k in self._values:
-                    info += ' - %s:' % k
-                    avg = np.mean(
-                        self._values[k][0] / max(1, self._values[k][1]))
+                    info += " - %s:" % k
+                    avg = np.mean(self._values[k][0] / max(1, self._values[k][1]))
                     if avg > 1e-3:
-                        info += ' %.4f' % avg
+                        info += " %.4f" % avg
                     else:
-                        info += ' %.4e' % avg
-                info += '\n'
+                        info += " %.4e" % avg
+                info += "\n"
 
                 sys.stdout.write(info)
                 sys.stdout.flush()
@@ -290,38 +295,41 @@ def slice_arrays(arrays, start=None, stop=None):
     if arrays is None:
         return [None]
     elif isinstance(arrays, list):
-        if hasattr(start, '__len__'):
+        if hasattr(start, "__len__"):
             # hdf5 datasets only support list objects as indices
-            if hasattr(start, 'shape'):
+            if hasattr(start, "shape"):
                 start = start.tolist()
             return [None if x is None else x[start] for x in arrays]
         else:
             return [None if x is None else x[start:stop] for x in arrays]
     else:
-        if hasattr(start, '__len__'):
-            if hasattr(start, 'shape'):
+        if hasattr(start, "__len__"):
+            if hasattr(start, "shape"):
                 start = start.tolist()
             return arrays[start]
-        elif hasattr(start, '__getitem__'):
+        elif hasattr(start, "__getitem__"):
             return arrays[start:stop]
         else:
             return [None]
 
+
 def slice_X(X, start=None, stop=None):
     if type(X) == list:
-        if hasattr(start, '__len__'):
+        if hasattr(start, "__len__"):
             return [x[start] for x in X]
         else:
             return [x[start:stop] for x in X]
     else:
-        if hasattr(start, '__len__'):
+        if hasattr(start, "__len__"):
             return X[start]
         else:
             return X[start:stop]
 
+
 # def make_batches(size, batch_size):
 #     nb_batch = int(np.ceil(size/float(batch_size)))
 #     return [(i*batch_size, min(size, (i+1)*batch_size)) for i in range(0, nb_batch)]
+
 
 def numpy_minibatch(numpy_array, batch_size=1, min_batch_size=1):
     """
@@ -343,12 +351,13 @@ def numpy_minibatch(numpy_array, batch_size=1, min_batch_size=1):
         A numpy array of the minibatch. It will yield over the first dimension of the input.
     """
     numpy_array = np.asarray(numpy_array)
-    assert 0 < min_batch_size <= batch_size, \
-        "batch_size (%d) has to be larger than min_batch_size (%d) and they both have to be greater than zero!" % \
-        (batch_size, min_batch_size)
+    assert 0 < min_batch_size <= batch_size, (
+        "batch_size (%d) has to be larger than min_batch_size (%d) and they both have to be greater than zero!"
+        % (batch_size, min_batch_size)
+    )
     # go through the first dimension of the input array.
     for i in iter(range((numpy_array.shape[0] // batch_size) + 1)):
         idx = i * batch_size
-        data = numpy_array[idx:(idx + batch_size)]
+        data = numpy_array[idx : (idx + batch_size)]
         if data.shape[0] >= min_batch_size:
             yield data

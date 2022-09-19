@@ -18,7 +18,7 @@ def dc(im1, im2):
     # Compute Dice coefficient
     intersection = np.logical_and(im1, im2)
 
-    dc = 2. * intersection.sum() / im_sum
+    dc = 2.0 * intersection.sum() / im_sum
 
     return dc
 
@@ -58,21 +58,21 @@ def perf_measure_vox(y_pred, y_true):
     FP = np.sum(np.logical_and(y_pred == 1, y_true == 0))
     FN = np.sum(np.logical_and(y_pred == 0, y_true == 1))
 
-    sensitivity = 100*TP/(TP+FN)
-    specificity = 100*TN/(TN+FP)
+    sensitivity = 100 * TP / (TP + FN)
+    specificity = 100 * TN / (TN + FP)
 
-    print('-'*60)
-    print("sensitivity: %.2f" %(sensitivity))
-    print("specificity: %.2f" %(specificity))
-    print('-'*60)
+    print("-" * 60)
+    print("sensitivity: %.2f" % (sensitivity))
+    print("specificity: %.2f" % (specificity))
+    print("-" * 60)
 
     perf = {
-			'sensitivity': sensitivity,
-			'specificity': specificity,
-			'TP': TP,
-			'FP': FP,
-			'TN': TN,
-			'FN': FN,
-	}
+        "sensitivity": sensitivity,
+        "specificity": specificity,
+        "TP": TP,
+        "FP": FP,
+        "TN": TN,
+        "FN": FN,
+    }
 
     return perf

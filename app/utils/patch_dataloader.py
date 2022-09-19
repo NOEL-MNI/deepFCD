@@ -11,7 +11,17 @@ from tqdm import trange
 from utils.keras_bayes_utils import *
 
 
-def test_scan_uncertainty(model, test_x_data, scan, options, intermediate=None, save_nifti=False, uncertainty=True, candidate_mask=None, T=20):
+def test_scan_uncertainty(
+    model,
+    test_x_data,
+    scan,
+    options,
+    intermediate=None,
+    save_nifti=False,
+    uncertainty=True,
+    candidate_mask=None,
+    T=20,
+):
     """
     inference based on a single model
     inputs:
@@ -29,19 +39,21 @@ def test_scan_uncertainty(model, test_x_data, scan, options, intermediate=None, 
     tmp[scan] = test_x_data
     test_x_data = tmp
     scans = test_x_data.keys()
-    flair_scans = [test_x_data[s]['FLAIR'] for s in scans]
+    flair_scans = [test_x_data[s]["FLAIR"] for s in scans]
     flair_image = load_nii(flair_scans[0]).get_data()
     header = load_nii(flair_scans[0]).header
     affine = header.get_qform()
 
     # get test paths
     _, scan = os.path.split(flair_scans[0])
-    test_folder = options['pred_folder']
+    test_folder = options["pred_folder"]
     if not os.path.exists(test_folder):
         os.mkdir(test_folder)
 
     # compute lesion segmentation in batches of size options['batch_size']
-    pred_fname = os.path.join(test_folder, str.replace(scan, '_flair.nii.gz', '') + '_out_pred_mean_0.nii.gz')
+    pred_fname = os.path.join(
+        test_folder, str.replace(scan, "_flair.nii.gz", "") + "_out_pred_mean_0.nii.gz"
+    )
     if os.path.isfile(pred_fname):
         print("reading {} from disk".format(pred_fname))
         thresh_image = load_nii(pred_fname).get_data()
@@ -49,9 +61,18 @@ def test_scan_uncertainty(model, test_x_data, scan, options, intermediate=None, 
         seg_image = np.zeros_like(flair_image)
         var_image = np.zeros_like(flair_image)
         thresh_image = np.zeros_like(flair_image)
-        for batch, centers in load_test_patches(test_x_data, options, options['patch_size'], options['batch_size'], options['min_th'], candidate_mask):
+        for batch, centers in load_test_patches(
+            test_x_data,
+            options,
+            options["patch_size"],
+            options["batch_size"],
+            options["min_th"],
+            candidate_mask,
+        ):
             print("predicting uncertainty")
-            y_pred, y_pred_var = predict_uncertainty(model, batch, batch_size=options['mini_batch_size'], T=T)
+            y_pred, y_pred_var = predict_uncertainty(
+                model, batch, batch_size=options["mini_batch_size"], T=T
+            )
             [x, y, z] = np.stack(centers, axis=1)
             seg_image[x, y, z] = y_pred[:, 1]
             var_image[x, y, z] = y_pred_var[:, 1]
@@ -60,18 +81,22 @@ def test_scan_uncertainty(model, test_x_data, scan, options, intermediate=None, 
             if not os.path.exists(test_folder):
                 os.mkdir(test_folder)
             out_scan = nib.Nifti1Image(seg_image, affine, header)
-            test_name = str.replace(scan, '_flair.nii.gz', '') + '_out_pred_mean_0.nii.gz'
+            test_name = (
+                str.replace(scan, "_flair.nii.gz", "") + "_out_pred_mean_0.nii.gz"
+            )
             out_scan.to_filename(os.path.join(test_folder, test_name))
 
             out_scan = nib.Nifti1Image(var_image, affine, header)
-            test_name = str.replace(scan, '_flair.nii.gz', '') + '_out_pred_var_0.nii.gz'
+            test_name = (
+                str.replace(scan, "_flair.nii.gz", "") + "_out_pred_var_0.nii.gz"
+            )
             out_scan.to_filename(os.path.join(test_folder, test_name))
 
-            if not os.path.exists(os.path.join(test_folder, options['experiment'])):
-                os.mkdir(os.path.join(test_folder, options['experiment']))
+            if not os.path.exists(os.path.join(test_folder, options["experiment"])):
+                os.mkdir(os.path.join(test_folder, options["experiment"]))
 
             out_scan = nib.Nifti1Image(seg_image, affine, header)
-            test_name = str.replace(scan, '_flair.nii.gz', '') + '_out_pred_0.nii.gz'
+            test_name = str.replace(scan, "_flair.nii.gz", "") + "_out_pred_0.nii.gz"
             out_scan.to_filename(os.path.join(test_folder, test_name))
 
             thresh_image = seg_image.copy()
@@ -82,10 +107,23 @@ def select_voxels_from_previous_model(model, train_x_data, options):
     """
     select training voxels from image segmentation masks
     """
-    threshold = options['th_dnn_train_2']
+    threshold = options["th_dnn_train_2"]
     # get_scan names
     scans = list(train_x_data.keys())
-    mask  = [test_scan_uncertainty(model, dict(train_x_data[scans[s]]), scans[s], options, intermediate=1, uncertainty=True) > threshold for s in trange(len(scans), desc='sel_vox_prev_model_pred_mean', colour='magenta')]
+    mask = [
+        test_scan_uncertainty(
+            model,
+            dict(train_x_data[scans[s]]),
+            scans[s],
+            options,
+            intermediate=1,
+            uncertainty=True,
+        )
+        > threshold
+        for s in trange(
+            len(scans), desc="sel_vox_prev_model_pred_mean", colour="magenta"
+        )
+    ]
 
     return mask
 
@@ -93,11 +131,18 @@ def select_voxels_from_previous_model(model, train_x_data, options):
 def predict_uncertainty(model, data, batch_size, T=10):
     input = model.layers[0].input
     output = model.layers[-1].output
-    f_stochastic = K.function([input, K.learning_phase()], output) # instantiate a Keras function.
-    K.set_image_dim_ordering('th')
-    K.set_image_data_format('channels_first')
+    f_stochastic = K.function(
+        [input, K.learning_phase()], output
+    )  # instantiate a Keras function.
+    K.set_image_dim_ordering("th")
+    K.set_image_data_format("channels_first")
 
-    Yt_hat = np.array([predict_stochastic(f_stochastic, data, batch_size=batch_size) for _ in trange(T, ascii=True, desc="predict_stochastic", colour='green')])
+    Yt_hat = np.array(
+        [
+            predict_stochastic(f_stochastic, data, batch_size=batch_size)
+            for _ in trange(T, ascii=True, desc="predict_stochastic", colour="green")
+        ]
+    )
     MC_pred = np.mean(Yt_hat, 0)
     MC_pred_var = np.var(Yt_hat, 0)
 
@@ -105,9 +150,9 @@ def predict_uncertainty(model, data, batch_size, T=10):
 
 
 def predict_stochastic(f, ins, batch_size=128, verbose=False):
-    '''
+    """
     loop over some data in batches.
-    '''
+    """
     nb_sample = len(ins)
     outs = []
     if verbose:
@@ -132,7 +177,7 @@ def predict_stochastic(f, ins, batch_size=128, verbose=False):
 
 
 def load_training_data(train_x_data, train_y_data, options, subcort_masks, model=None):
-    '''
+    """
     load training and labels for all scans and modalities
 
     inputs:
@@ -149,7 +194,7 @@ def load_training_data(train_x_data, train_y_data, options, subcort_masks, model
     outputs:
         - X: np.array [num_samples, num_channels, p1, p2, p2]
         - Y: np.array [num_samples, 1]
-    '''
+    """
     # get_scan names and number of modalities used
     scans = list(train_x_data.keys())
     modalities = train_x_data[scans[0]].keys()
@@ -158,10 +203,12 @@ def load_training_data(train_x_data, train_y_data, options, subcort_masks, model
     #   if no model is passed, training samples are extracted by discarding the CSF and darker WM in FLAIR, and use all remaining voxels
     #   if model is passed, use the trained model to extract all voxels with probability > 0.4
     if model is None:
-        flair_scans = [train_x_data[s]['FLAIR'] for s in scans]
-        selected_voxels = select_training_voxels(flair_scans, options['min_th'])
+        flair_scans = [train_x_data[s]["FLAIR"] for s in scans]
+        selected_voxels = select_training_voxels(flair_scans, options["min_th"])
     else:
-        selected_voxels = select_voxels_from_previous_model(model, train_x_data, options)
+        selected_voxels = select_voxels_from_previous_model(
+            model, train_x_data, options
+        )
 
     # extract patches and labels for each of the modalities
     data = []
@@ -171,16 +218,24 @@ def load_training_data(train_x_data, train_y_data, options, subcort_masks, model
         y_data = [train_y_data[s] for s in scans]
         if subcort_masks is not None:
             submasks = [subcort_masks[s] for s in scans]
-            x_patches, y_patches = load_train_patches(x_data, y_data, selected_voxels, options['patch_size'], submasks)
+            x_patches, y_patches = load_train_patches(
+                x_data, y_data, selected_voxels, options["patch_size"], submasks
+            )
         else:
-            x_patches, y_patches = load_train_patches(x_data, y_data, selected_voxels, options['patch_size'], subcort_masks=None)
+            x_patches, y_patches = load_train_patches(
+                x_data,
+                y_data,
+                selected_voxels,
+                options["patch_size"],
+                subcort_masks=None,
+            )
         data.append(x_patches)
     # stack patches in channels [samples, channels, p1, p2, p3]
-    X = np.stack(data, axis = 1)
+    X = np.stack(data, axis=1)
     Y = y_patches
 
     # apply randomization if selected
-    if options['randomize_train']:
+    if options["randomize_train"]:
         seed = np.random.randint(np.iinfo(np.int32).max)
         np.random.seed(seed)
         X = np.random.permutation(X.astype(dtype=np.float32))
@@ -211,7 +266,11 @@ def select_training_voxels(input_masks, threshold=0.5, datatype=np.float32, t1=0
     """
     # load images and normalize their intensities
     images = [load_nii(image_name).get_data() for image_name in input_masks]
-    images_norm = [(im.astype(dtype=datatype) - im[np.nonzero(im)].mean()) / im[np.nonzero(im)].std() for im in images]
+    images_norm = [
+        (im.astype(dtype=datatype) - im[np.nonzero(im)].mean())
+        / im[np.nonzero(im)].std()
+        for im in images
+    ]
 
     # select voxels with intensity higher than threshold
     rois = [image > threshold for image in images_norm]
@@ -230,12 +289,24 @@ def select_testing_voxels(flair, t1=None, threshold=0.5, datatype=np.float32):
     - rois: list where each element contains the subject binary mask for selected voxels [len(x), len(y), len(z)]
     """
     images = [load_nii(image_name).get_data() for image_name in flair]
-    images_norm = [(im.astype(dtype=datatype) - im[np.nonzero(im)].mean()) / im[np.nonzero(im)].std() for im in images]
+    images_norm = [
+        (im.astype(dtype=datatype) - im[np.nonzero(im)].mean())
+        / im[np.nonzero(im)].std()
+        for im in images
+    ]
     rois = [image > threshold for image in images_norm]
     return rois
 
 
-def load_train_patches(x_data, y_data, selected_voxels, patch_size, subcort_masks=None, seed=666, datatype=np.float32):
+def load_train_patches(
+    x_data,
+    y_data,
+    selected_voxels,
+    patch_size,
+    subcort_masks=None,
+    seed=666,
+    datatype=np.float32,
+):
     """
     load train patches with size equal to patch_size, given a list of selected voxels
 
@@ -251,17 +322,29 @@ def load_train_patches(x_data, y_data, selected_voxels, patch_size, subcort_mask
     """
     # load images and normalize their intensties
     images = [load_nii(name).get_data() for name in x_data]
-    images_norm = [(im.astype(dtype=datatype) - im[np.nonzero(im)].mean()) / im[np.nonzero(im)].std() for im in images]
+    images_norm = [
+        (im.astype(dtype=datatype) - im[np.nonzero(im)].mean())
+        / im[np.nonzero(im)].std()
+        for im in images
+    ]
 
     # load labels
-    lesion_masks = [binarize_label_gm(load_nii(name).get_data()) for name in y_data] # preserve only the GM component, ignore, WM and transmantle sign
+    lesion_masks = [
+        binarize_label_gm(load_nii(name).get_data()) for name in y_data
+    ]  # preserve only the GM component, ignore, WM and transmantle sign
 
     # load subcortical masks to exclude these voxels from training
     if subcort_masks is not None:
         submasks = [load_nii(name).get_data() for name in subcort_masks]
-        nolesion_masks = [np.logical_and(np.logical_not(lesion), submask, brain) for lesion, submask, brain in zip(lesion_masks, submasks, selected_voxels)]
+        nolesion_masks = [
+            np.logical_and(np.logical_not(lesion), submask, brain)
+            for lesion, submask, brain in zip(lesion_masks, submasks, selected_voxels)
+        ]
     else:
-        nolesion_masks = [np.logical_and(np.logical_not(binary_dilation(lesion, iterations=5)), brain) for lesion, brain in zip(lesion_masks, selected_voxels)]
+        nolesion_masks = [
+            np.logical_and(np.logical_not(binary_dilation(lesion, iterations=5)), brain)
+            for lesion, brain in zip(lesion_masks, selected_voxels)
+        ]
 
     # retrieve x,y,z coordinates for each image
     lesion_centers = [get_mask_voxels(mask) for mask in lesion_masks]
@@ -270,18 +353,41 @@ def load_train_patches(x_data, y_data, selected_voxels, patch_size, subcort_mask
     # load all positive samples (lesional voxels) and the same number of random negatives samples
     np.random.seed(seed)
 
-    x_pos_patches = [np.array(get_patches(image, centers, patch_size)) for image, centers in zip(images_norm, lesion_centers)]
-    y_pos_patches = [np.array(get_patches(image, centers, patch_size)) for image, centers in zip(lesion_masks, lesion_centers)]
+    x_pos_patches = [
+        np.array(get_patches(image, centers, patch_size))
+        for image, centers in zip(images_norm, lesion_centers)
+    ]
+    y_pos_patches = [
+        np.array(get_patches(image, centers, patch_size))
+        for image, centers in zip(lesion_masks, lesion_centers)
+    ]
 
-    indices = [np.random.permutation(range(0, len(center_no_les))).tolist()[:len(center_les)] for center_no_les, center_les in zip(nolesion_centers, lesion_centers)]
+    indices = [
+        np.random.permutation(range(0, len(center_no_les))).tolist()[: len(center_les)]
+        for center_no_les, center_les in zip(nolesion_centers, lesion_centers)
+    ]
 
-    nolesion_small = [itemgetter(*idx)(centers) for centers, idx in zip(nolesion_centers, indices)]
-    x_neg_patches = [np.array(get_patches(image, centers, patch_size)) for image, centers in zip(images_norm, nolesion_small)]
-    y_neg_patches = [np.array(get_patches(image, centers, patch_size)) for image, centers in zip(lesion_masks, nolesion_small)]
+    nolesion_small = [
+        itemgetter(*idx)(centers) for centers, idx in zip(nolesion_centers, indices)
+    ]
+    x_neg_patches = [
+        np.array(get_patches(image, centers, patch_size))
+        for image, centers in zip(images_norm, nolesion_small)
+    ]
+    y_neg_patches = [
+        np.array(get_patches(image, centers, patch_size))
+        for image, centers in zip(lesion_masks, nolesion_small)
+    ]
 
     # concatenate positive and negative patches for each subject
-    X = np.concatenate([np.concatenate([x1, x2]) for x1, x2 in zip(x_pos_patches, x_neg_patches)], axis = 0)
-    Y = np.concatenate([np.concatenate([y1, y2]) for y1, y2 in zip(y_pos_patches, y_neg_patches)], axis= 0)
+    X = np.concatenate(
+        [np.concatenate([x1, x2]) for x1, x2 in zip(x_pos_patches, x_neg_patches)],
+        axis=0,
+    )
+    Y = np.concatenate(
+        [np.concatenate([y1, y2]) for y1, y2 in zip(y_pos_patches, y_neg_patches)],
+        axis=0,
+    )
 
     return X, Y
 
@@ -289,7 +395,7 @@ def load_train_patches(x_data, y_data, selected_voxels, patch_size, subcort_mask
 def binarize_label_gm(mask):
     """
     discard labels wm (2) and transmantle sign (6)
-    
+
     input:
     - mask: binary mask with GM (intensity:1), WM (2) and transmantle sign (6)
 
@@ -298,11 +404,19 @@ def binarize_label_gm(mask):
     """
     mask_ = np.zeros_like(mask)
     tmp = np.stack(np.where(mask == 1), axis=1)
-    mask_[tmp[:,0], tmp[:,1], tmp[:,2]] = 1
+    mask_[tmp[:, 0], tmp[:, 1], tmp[:, 2]] = 1
     return mask_.astype(np.bool)
 
 
-def load_test_patches(test_x_data, options, patch_size, batch_size, threshold, voxel_candidates=None, datatype=np.float32):
+def load_test_patches(
+    test_x_data,
+    options,
+    patch_size,
+    batch_size,
+    threshold,
+    voxel_candidates=None,
+    datatype=np.float32,
+):
     """
     load test patches with size equal to patch_size, given a list of selected voxels
     patches are returned in batches to limit RAM usage
@@ -328,24 +442,33 @@ def load_test_patches(test_x_data, options, patch_size, batch_size, threshold, v
 
     for m in modalities:
         raw_images = [load_nii(test_x_data[s][m]).get_data() for s in scans]
-        images.append([(im.astype(dtype=datatype) - im[np.nonzero(im)].mean()) / im[np.nonzero(im)].std() for im in raw_images])
+        images.append(
+            [
+                (im.astype(dtype=datatype) - im[np.nonzero(im)].mean())
+                / im[np.nonzero(im)].std()
+                for im in raw_images
+            ]
+        )
 
     # select voxels for testing - discard CSF and darker WM in FLAIR
     # if voxel_candidates is not selected, use intensity > 0.4 in FLAIR, else:
     # use the binary mask to extract candidate voxels
     if voxel_candidates is None:
-        flair_scans = [test_x_data[s]['FLAIR'] for s in scans]
-        selected_voxels = [get_mask_voxels(mask) for mask in select_training_voxels(flair_scans, threshold)][0]
+        flair_scans = [test_x_data[s]["FLAIR"] for s in scans]
+        selected_voxels = [
+            get_mask_voxels(mask)
+            for mask in select_training_voxels(flair_scans, threshold)
+        ][0]
     else:
         selected_voxels = get_mask_voxels(voxel_candidates)
 
     # yield data for testing with size equal to batch_size
     for i in range(0, len(selected_voxels), batch_size):
-        c_centers = selected_voxels[i:i+batch_size]
+        c_centers = selected_voxels[i : i + batch_size]
         X = []
         for image_modality in images:
             X.append(get_patches(image_modality[0], c_centers, patch_size))
-        yield np.stack(X, axis = 1), c_centers
+        yield np.stack(X, axis=1), c_centers
 
 
 def get_mask_voxels(mask):
@@ -366,7 +489,7 @@ def get_mask_voxels(mask):
 def get_patches(image, centers, patch_size=(16, 16, 16)):
     """
     get image patches of specified size based on a set of centers
-    
+
     inputs:
     - mask: binary mask
     - centers: list of tuples corresponding voxel coordinates (x,y,z) of selected patches
@@ -384,10 +507,16 @@ def get_patches(image, centers, patch_size=(16, 16, 16)):
     sizes_match = [len(center) == len(patch_size) for center in centers]
 
     if list_of_tuples and sizes_match:
-        patch_half = tuple([idx//2 for idx in patch_size])
+        patch_half = tuple([idx // 2 for idx in patch_size])
         new_centers = [map(add, center, patch_half) for center in centers]
-        padding = tuple((idx, size-idx) for idx, size in zip(patch_half, patch_size))
-        new_image = np.pad(image, padding, mode='constant', constant_values=0)
-        slices = [[slice(c_idx-p_idx, c_idx+(s_idx-p_idx)) for (c_idx, p_idx, s_idx) in zip(center, patch_half, patch_size)] for center in new_centers]
+        padding = tuple((idx, size - idx) for idx, size in zip(patch_half, patch_size))
+        new_image = np.pad(image, padding, mode="constant", constant_values=0)
+        slices = [
+            [
+                slice(c_idx - p_idx, c_idx + (s_idx - p_idx))
+                for (c_idx, p_idx, s_idx) in zip(center, patch_half, patch_size)
+            ]
+            for center in new_centers
+        ]
         patches = [new_image[tuple(idx)] for idx in slices]
     return patches
