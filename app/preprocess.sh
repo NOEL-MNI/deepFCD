@@ -25,6 +25,7 @@ OUTDIR=${BASEDIR}/${ID}/        # args.outdir = os.path.join(args.dir, args.id)
 
 PWD=$(dirname "$0")
 
+conda=${CONDA_EXE}
 eval "$(conda shell.bash hook)"
 conda activate preprocess
 # echo $CONDA_PREFIX
