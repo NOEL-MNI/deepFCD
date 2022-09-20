@@ -2,10 +2,12 @@ ACCOUNT := noelmni
 SERVICE := deep-fcd
 IMAGE 	:= $(ACCOUNT)/$(SERVICE) # noelmni/deep-fcd
 TAG		:= test
-UID		:= 2551 # id -u
-GID		:= 618 # id -g
-CASE_ID := mcd_0468_1
-TMPDIR	:= /host/hamlet/local_raid/data/ravnoor/sandbox/testrun
+UID		:= 2551
+GID		:= 618
+CASE_ID := BAR_002
+TMPDIR	:= /host/hamlet/local_raid/data/ravnoor/sandbox
+BRAIN_MASKING := 1
+PREPROCESS		:= 0
 
 build:
 	docker build -t $(ACCOUNT)/$(SERVICE):$(TAG) .
@@ -14,10 +16,10 @@ clean-build:
 	docker build -t $(ACCOUNT)/$(SERVICE):$(TAG) . --no-cache
 
 test-pipeline:
-	./app/inference.py $(CASE_ID) t1.nii.gz flair.nii.gz $(TMPDIR) cuda0 1 1
+	./app/inference.py $(CASE_ID) t1.nii.gz flair.nii.gz $(TMPDIR) cuda0 $(BRAIN_MASKING) $(PREPROCESS)
 
 test-preprocess:
-	./app/preprocess.sh $(CASE_ID) t1.nii.gz flair.nii.gz $(TMPDIR) 1 1
+	./app/preprocess.sh $(CASE_ID) t1.nii.gz flair.nii.gz $(TMPDIR) $(BRAIN_MASKING) $(PREPROCESS)
 
 test-pipeline-docker:
 	docker run --rm -it --init \
@@ -25,7 +27,7 @@ test-pipeline-docker:
 	--user="$(UID):$(GID)" \
 	--volume="$(TMPDIR):/tmp" \
 	$(ACCOUNT)/$(SERVICE):$(TAG) \
-	/app/inference.py $(CASE_ID) t1.nii.gz flair.nii.gz /tmp cuda0 1 1
+	/app/inference.py $(CASE_ID) t1.nii.gz flair.nii.gz /tmp cuda0 $(BRAIN_MASKING) $(PREPROCESS)
 
 clean:
 	rm -rf $(TMPDIR)/$(CASE_ID)/{tmp,native,transforms}
