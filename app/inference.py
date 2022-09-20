@@ -223,10 +223,10 @@ for _, scan in enumerate(
     logging.info("testing the model for scan: {}".format(scan))
     logging.info("-" * 70)
 
-    # test0: prediction/stage1
-    # test1: pred/stage2
-    # test2: morphological processing + contiguous clusters
-    # pred0, pred1, postproc, _, _ = test_model(model, t_data, options)
+    # if transform(s) do not exist (i.e., no preprocessing done), then skip (see base.py#L412)
+    if not any([os.path.exists(transforms[scan]["T1"]), os.path.exists(transforms[scan]["FLAIR"])]):
+        transforms = None
+
     test_model(
         model,
         t_data,
