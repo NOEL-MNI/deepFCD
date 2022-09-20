@@ -189,7 +189,7 @@ test_data = {
     }
     for f in test_list
 }
-test_tranforms = {
+test_transforms = {
     f: {m: n for m, n in zip(modalities, transform_files)} for f in test_list
 }
 # test_data = {f: {m: os.path.join(options['test_folder'], f, n) for m, n in zip(modalities, files)} for f in test_list}
@@ -200,7 +200,7 @@ for _, scan in enumerate(
     t_data = {}
     t_data[scan] = test_data[scan]
     transforms = {}
-    transforms[scan] = test_tranforms[scan]
+    transforms[scan] = test_transforms[scan]
 
     options["pred_folder"] = os.path.join(
         options["test_folder"], scan, options["experiment"]
