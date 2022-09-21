@@ -1,5 +1,5 @@
 
-name: Python dependencies
+name: Test Python app dependencies
 
 on: [push, pull_request]
 
