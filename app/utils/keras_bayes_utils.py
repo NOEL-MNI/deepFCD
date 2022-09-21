@@ -3,6 +3,7 @@ import sys
 import time
 
 import numpy as np
+from keras import backend as K
 
 
 def batch_shuffle(index_array, batch_size):
