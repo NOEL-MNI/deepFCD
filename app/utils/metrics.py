@@ -13,7 +13,7 @@ def dc(im1, im2):
 
     im_sum = im1.sum() + im2.sum()
     if im_sum == 0:
-        return empty_score
+        return 1
 
     # Compute Dice coefficient
     intersection = np.logical_and(im1, im2)
