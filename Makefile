@@ -29,8 +29,8 @@ test-pipeline-docker:
 	$(ACCOUNT)/$(SERVICE):$(TAG) \
 	/app/inference.py $(CASE_ID) t1.nii.gz flair.nii.gz /tmp cuda0 $(BRAIN_MASKING) $(PREPROCESS)
 
-test-postprocess:
-	./app/utils/postprocessing.py $(CASE_ID) $(TMPDIR)
+test-reporting:
+	./app/utils/reporting.py $(CASE_ID) $(TMPDIR)/$(CASE_ID)/noel_deepFCD_dropoutMC/
 
 clean:
 	rm -rf $(TMPDIR)/$(CASE_ID)/{tmp,native,transforms}
