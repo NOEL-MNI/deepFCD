@@ -142,4 +142,4 @@ def extractLesionCluster(scan, ea, ea_var, options):
     }
 
     stat_df = pd.DataFrame.from_records(stats)
-    return stat_df
+    return pred_labels, stat_df

@@ -6,9 +6,11 @@
 import os
 import sys
 
-from atlasreader import get_statmap_info
+import nibabel as nib
+import numpy as np
 from nibabel import load as load_nii
 
+from atlasreader.atlasreader import read_atlas_peak
 from confidence import extractLesionCluster
 
 scan = sys.argv[1]
@@ -42,16 +44,32 @@ scan_keys = []
 for k in data_bayes.keys():
     scan_keys.append(k)
 
-# results = {}
-# results = extractLesionCluster(scan, ea, ea_var, options)
+results = {}
+output_scan, results = extractLesionCluster(scan, ea, ea_var, options)
 
-# results.sort_values("rank")
-# # results["var"].max()
-# # results["var2"] = 1 / results["var"]
-# # results["var3"] = results["var2"] / results["var2"].max()
-# results["confidence"] = (1 / results["var"]) / results["var"].max()
+header = load_nii(data_bayes[scan]).header
+affine = header.get_qform()
+out_scan = nib.Nifti1Image(output_scan, affine=affine, header=header)
 
-# print(results.sort_values("rank"))
+results.sort_values("rank")
+# results["var"].max()
+# results["var2"] = 1 / results["var"]
+# results["var3"] = results["var2"] / results["var2"].max()
+results["confidence"] = (1 / results["var"]) / results["var"].max()
+ranked_results = results.sort_values("rank")
+ranked_results.reset_index(inplace=True)
+
+labels = []
+for N in np.arange(0,len(ranked_results.coords)):
+    label = read_atlas_peak(atlastype='harvard_oxford', coordinate=ranked_results.coords[N], prob_thresh=5)
+    for _, (perc, l) in label[0]:
+        print(perc, l)
+    labels.append(label[0])
+    # print(label)
+
+ranked_results['label'] = labels
+print(ranked_results)
+# print(results.sort_values("rank").coords)
 
 # simulation = pd.DataFrame(np.random.random(20) * 0.3, columns=["var"])
 
@@ -61,7 +79,9 @@ for k in data_bayes.keys():
 
 # simulation.sort_values("var")
 
-clust_frame, _ = get_statmap_info(data_bayes[scan], cluster_extent=options["l_min"], direction='both', atlas='default', 
-                                    voxel_thresh=options["t_bin"], prob_thresh=options["t_bin"], min_distance=None)
-print(clust_frame)
+# clust_frame, _ = get_statmap_info(data_bayes[scan], cluster_extent=options["l_min"], direction='both', atlas='default', 
+#                                     voxel_thresh=options["t_bin"], prob_thresh=options["t_bin"], min_distance=None)
+# print(clust_frame)
 # print(peaks_frame)
+
+# read_atlas_cluster(atlastype, cluster, affine, prob_thresh=options["t_bin"]+0.1)
