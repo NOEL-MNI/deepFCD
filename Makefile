@@ -32,6 +32,9 @@ test-pipeline-docker:
 test-reporting:
 	./app/utils/reporting.py $(CASE_ID) $(TMPDIR)/$(CASE_ID)/noel_deepFCD_dropoutMC/
 
+install-jupyter-kernel:
+  python -m ipykernel install --user --name deepFCD
+
 clean:
 	rm -rf $(TMPDIR)/$(CASE_ID)/{tmp,native,transforms}
 	rm -f $(TMPDIR)/$(CASE_ID)/{*_final,*denseCrf3d*,*_native,*_maskpred}.nii.gz
