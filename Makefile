@@ -7,7 +7,7 @@ GID		:= 618
 CASE_ID := BAR_002
 TMPDIR	:= /host/hamlet/local_raid/data/ravnoor/sandbox
 BRAIN_MASKING := 1
-PREPROCESS		:= 0
+PREPROCESS		:= 1
 
 build:
 	docker build -t $(ACCOUNT)/$(SERVICE):$(TAG) .
@@ -28,6 +28,12 @@ test-pipeline-docker:
 	--volume="$(TMPDIR):/tmp" \
 	$(ACCOUNT)/$(SERVICE):$(TAG) \
 	/app/inference.py $(CASE_ID) t1.nii.gz flair.nii.gz /tmp cuda0 $(BRAIN_MASKING) $(PREPROCESS)
+
+test-reporting:
+	./app/utils/reporting.py $(CASE_ID) $(TMPDIR)/$(CASE_ID)/noel_deepFCD_dropoutMC/
+
+install-jupyter-kernel:
+  python -m ipykernel install --user --name deepFCD
 
 clean:
 	rm -rf $(TMPDIR)/$(CASE_ID)/{tmp,native,transforms}
