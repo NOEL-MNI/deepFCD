@@ -7,7 +7,7 @@ matplotlib==3.5.1
 mo-dots==9.147.22086
 nibabel==3.2.2
 nilearn==0.9.1
-numpy==1.21.6
+numpy==1.22.0
 pandas==1.3.5
 psutil==5.9.2
 scikit-image==0.19.2
