@@ -18,6 +18,12 @@ clean-build:
 test-pipeline:
 	./app/inference.py $(CASE_ID) t1.nii.gz flair.nii.gz $(TMPDIR) cuda0 $(BRAIN_MASKING) $(PREPROCESS)
 
+memray-profiling:
+	python3 -m memray run ./app/inference.py $(CASE_ID) t1_brain.nii.gz t2_brain.nii.gz $(TMPDIR) cuda0 0 0
+
+memray-profiling-cpu:
+	python3 -m memray run ./app/inference.py $(CASE_ID) t1_brain.nii.gz t2_brain.nii.gz $(TMPDIR) cpu 0 0
+
 test-preprocess:
 	./app/preprocess.sh $(CASE_ID) t1.nii.gz flair.nii.gz $(TMPDIR) $(BRAIN_MASKING) $(PREPROCESS)
 

@@ -1,3 +1,5 @@
 # ignore deepMask
 # git clone <> in Dockerfile instead
 app/deepMask
+memray*.bin
+memray*.html
