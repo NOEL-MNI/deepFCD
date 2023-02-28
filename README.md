@@ -157,9 +157,13 @@ docker run --rm -it --init \
     1                  \ # perform (`1`) or not perform (`0`) image pre-processing
 ```
 
+## Reporting
+[example](docs/reporting.md)
+
 ## License
 <a href= "https://opensource.org/licenses/BSD-3-Clause"><img src="https://img.shields.io/badge/License-BSD%203--Clause-blue.svg" /></a>
 
 ```console
 Copyright 2021 Neuroimaging of Epilepsy Laboratory, McGill University
 ```
+

@@ -36,10 +36,10 @@ test-pipeline-docker:
 	/app/inference.py $(CASE_ID) t1.nii.gz flair.nii.gz /tmp cuda0 $(BRAIN_MASKING) $(PREPROCESS)
 
 test-reporting:
-	./app/utils/reporting.py $(CASE_ID) $(TMPDIR)/$(CASE_ID)/noel_deepFCD_dropoutMC/
+	./app/utils/reporting.py $(CASE_ID) $(TMPDIR)/
 
 install-jupyter-kernel:
-  python -m ipykernel install --user --name deepFCD
+	python -m ipykernel install --user --name deepFCD
 
 clean:
 	rm -rf $(TMPDIR)/$(CASE_ID)/{tmp,native,transforms}
