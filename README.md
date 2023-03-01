@@ -128,7 +128,7 @@ chmod +x ./app/inference.py   # make the script executable -ensure you have the 
 docker run --rm -it --init \
     --gpus=all                 \ # expose the host GPUs to the guest docker container
     --user="$(id -u):$(id -g)" \ # map user permissions appropriately
-    --volume="$PWD:/io"        \ # $PWD refers to the present working directory containing the input images, can be modified to a local host directory
+    --volume="${IO_DIRECTORY}:/io"   \ # $PWD refers to the present working directory containing the input images, can be modified to a local host directory
     noelmni/deep-fcd:latest    \ # docker image containing all the necessary software dependencies
     /app/inference.py  \ # the script to perform inference on the multimodal MRI images
     ${PATIENT_ID}      \ # prefix for the filenames; for example: FCD_001 (needed for outputs only)
@@ -144,7 +144,7 @@ docker run --rm -it --init \
 ```bash
 docker run --rm -it --init \
     --user="$(id -u):$(id -g)" \ # map user permissions appropriately
-    --volume="$PWD:/io"        \ # $PWD refers to the present working directory containing the input images, can be modified to a local host directory
+    --volume="${IO_DIRECTORY}:/io" \ # $PWD refers to the present working directory containing the input images, can be modified to a local host directory
     --env OMP_NUM_THREADS=6    \ # specify number of threads to initialize - by default this variable is set to half the number of available logical cores
     noelmni/deep-fcd:latest    \ # docker image containing all the necessary software dependencies
     /app/inference.py  \ # the script to perform inference on the multimodal MRI images
@@ -157,8 +157,24 @@ docker run --rm -it --init \
     1                  \ # perform (`1`) or not perform (`0`) image pre-processing
 ```
 
-## Reporting
-[example](docs/reporting.md)
+## 4. Reporting
+[example output](docs/reporting.md)
+
+### 4.1 Reporting output
+```bash
+chmod +x ./app/utils/reporting.py
+./app/utils/reporting.py ${PATIENT_ID} ${IO_DIRECTORY}
+```
+
+### 4.2 Reporting output using Docker
+```bash
+docker run --rm -it --init \
+    --user="$(id -u):$(id -g)"
+    --volume="${IO_DIRECTORY}:/io" noelmni/deep-fcd:latest
+    /app/utils/reporting.py ${PATIENT_ID} /io
+```
+
+
 
 ## License
 <a href= "https://opensource.org/licenses/BSD-3-Clause"><img src="https://img.shields.io/badge/License-BSD%203--Clause-blue.svg" /></a>

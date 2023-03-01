@@ -1,7 +1,8 @@
 #!/usr/bin/env python
 # coding: utf-8
 
-'''Rank clusters based on probability/size thresholding, and prints output
+'''Rank clusters based on probability/size thresholding and uncertainty, 
+    and prints output
 
 Usage:
     conda activate deepFCD
