@@ -33,7 +33,7 @@ OR
   author = {Gill, Ravnoor Singh and Lee, Hyo-Min and Caldairou, Benoit and Hong, Seok-Jun and Barba, Carmen and Deleo, Francesco and D'Incerti, Ludovico and Coelho, Vanessa Cristina Mendes and Lenge, Matteo and Semmelroch, Mira and others},
   journal = {Neurology},
   year = {2021},
-  publisher = {Americal Academy of Neurology},
+  publisher = {American Academy of Neurology},
   code = {\url{https://github.com/NOEL-MNI/deepFCD}},
   doi = {https://doi.org/10.1212/WNL.0000000000012698}
 }
