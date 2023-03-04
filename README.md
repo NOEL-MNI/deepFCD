@@ -11,11 +11,12 @@
       <a href= "https://github.com/Theano/Theano">
         <img src="https://img.shields.io/badge/Theano-1.0.4-2BAF2B.svg" /></a>
       <a href= "https://github.com/NOEL-MNI/deepFCD/blob/main/LICENSE">
-        <img src="https://img.shields.io/badge/License-BSD%203--Clause-blue.svg" /></a>
+        <img src="https://img.shields.io/badge/License-BSD%203--Clause-cyan.svg" /></a>
+      <a href="https://doi.org/10.1212/WNL.0000000000012698">
+        <img src="https://img.shields.io/badge/DOI/article-10.1212%2FWNL.0000000000012698-blue" alt="DOI/article"></a>
       <a href="https://doi.org/10.5281/zenodo.4521706">
-        <img src="https://zenodo.org/badge/DOI/10.5281/zenodo.4521706.svg" alt="DOI"></a>
+        <img src="https://img.shields.io/badge/DOI/data-10.5281%2Fzenodo.4521706-blue" alt="DOI/data"></a>
 </p>
-
 
 ------------------------
 
