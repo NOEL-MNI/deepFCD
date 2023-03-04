@@ -23,6 +23,10 @@
 ![](assets/diagram.jpg)
 
 ### Please cite:
+> Gill, R. S., Lee, H. M., Caldairou, B., Hong, S. J., Barba, C., Deleo, F., D'Incerti, L., Mendes Coelho, V. C., Lenge, M., Semmelroch, M., Schrader, D. V., Bartolomei, F., Guye, M., Schulze-Bonhage, A., Urbach, H., Cho, K. H., Cendes, F., Guerrini, R., Jackson, G., Hogan, R. E., … Bernasconi, A. (2021). Multicenter Validation of a Deep Learning Detection Algorithm for Focal Cortical Dysplasia. Neurology, 97(16), e1571–e1582. https://doi.org/10.1212/WNL.0000000000012698
+
+OR
+
 ```TeX
 @article{GillFCD2021,
   title = {Multicenter Validated Detection of Focal Cortical Dysplasia using Deep Learning},
