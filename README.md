@@ -113,6 +113,10 @@ export OMP_NUM_THREADS=6    \ # specify number of threads to initialize when usi
     1                  \ # perform (`1`) or not perform (`0`) image pre-processing
 
 ```
+#### example:
+```bash
+./app/inference.py FCD_001 T1.nii.gz FLAIR.nii.gz /io cpu 1 1
+```
 
 ### 3.2 Inference (GPU)
 ```bash
@@ -126,6 +130,10 @@ chmod +x ./app/inference.py   # make the script executable -ensure you have the 
     1                  \ # perform (`1`) or not perform (`0`) brain extraction
     1                  \ # perform (`1`) or not perform (`0`) image pre-processing
 
+```
+#### example:
+```bash
+./app/inference.py FCD_001 T1.nii.gz FLAIR.nii.gz /io cuda0 1 1
 ```
 
 ### 3.3 Inference using Docker (GPU), requires [nvidia-container-toolkit](https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/install-guide.html)
@@ -144,6 +152,10 @@ docker run --rm -it --init \
     1                  \ # perform (`1`) or not perform (`0`) brain extraction
     1                  \ # perform (`1`) or not perform (`0`) image pre-processing
 ```
+#### example:
+```bash
+docker run --rm -it --init --gpus=all --volume=$PWD/io:/io noelmni/deep-fcd:latest /app/inference.py FCD_001 T1.nii.gz FLAIR.nii.gz /io cuda0 1 1
+```
 
 ### 3.4 Inference using Docker (CPU)
 ```bash
@@ -161,6 +173,10 @@ docker run --rm -it --init \
     1                  \ # perform (`1`) or not perform (`0`) brain extraction
     1                  \ # perform (`1`) or not perform (`0`) image pre-processing
 ```
+#### example:
+```bash
+docker run --rm -it --init --env OMP_NUM_THREADS=6 --volume=$PWD/io:/io noelmni/deep-fcd:latest /app/inference.py FCD_001 T1.nii.gz FLAIR.nii.gz /io cpu 1 1
+```
 
 ## 4. Reporting
 [example output](docs/reporting.md)
@@ -170,6 +186,10 @@ docker run --rm -it --init \
 chmod +x ./app/utils/reporting.py
 ./app/utils/reporting.py ${PATIENT_ID} ${IO_DIRECTORY}
 ```
+#### example:
+```bash
+./app/utils/inference.py FCD_001 /io
+```
 
 ### 4.2 Reporting output using Docker
 ```bash
@@ -178,13 +198,16 @@ docker run --rm -it --init \
     --volume="${IO_DIRECTORY}:/io" noelmni/deep-fcd:latest
     /app/utils/reporting.py ${PATIENT_ID} /io
 ```
-
+#### example:
+```bash
+docker run --rm -it --init --gpus=all --volume=$PWD/io:/io noelmni/deep-fcd:latest /app/utils/reporting.py FCD_001 /io
+```
 
 
 ## License
 <a href= "https://opensource.org/licenses/BSD-3-Clause"><img src="https://img.shields.io/badge/License-BSD%203--Clause-blue.svg" /></a>
 
 ```console
-Copyright 2021 Neuroimaging of Epilepsy Laboratory, McGill University
+Copyright 2023 Neuroimaging of Epilepsy Laboratory, McGill University
 ```
 
