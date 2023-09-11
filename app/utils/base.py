@@ -21,12 +21,26 @@ from utils.post_processor import *
 
 
 def print_data_shape(X):
+    """ Print shape of the training data
+
+    Args:
+        X (_type_): numpy array with the 3D patches for T1w and FLAIR
+    """    
     print("====> # 3D training patches:", X.shape[0], "\n")
     print("====> # patch size:", (X.shape[2], X.shape[3], X.shape[4]), "\n")
     print("====> # modalities:", (X.shape[1]), "\n")
 
 
 def partition_leave_one_site_out(datafile=None, test_site=None):
+    """Partition the data based on leave-one-site-out (LoSo).
+
+    Args:
+        datafile (_type_, optional): CSV file containing all patient IDs associated with their respective site label. Defaults to None.
+        test_site (_type_, optional): The site label to be used as held-out. Defaults to None.
+
+    Returns:
+        _type_: _description_
+    """    
     data = pd.read_excel(datafile)
     ids = data["index"]
     groups = data["testing_dataset"].values
