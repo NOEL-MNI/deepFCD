@@ -1,30 +1,29 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 
 import os
+try:
+    import h5py
+except ImportError:
+    raise ImportError('install h5py first: `pip install h5py --upgrade`')
+
+import numpy as np
 
 os.environ["KERAS_BACKEND"] = "theano"
 os.environ["THEANO_FLAGS"] = "mode=FAST_RUN,device=cpu,floatX=float32"
 print(os.environ["THEANO_FLAGS"])
 
 import time
-
-# from utils.base import *
-from utils.h5data import *
-from utils.metrics import *
-
-# from keras.utils import to_categorical
-
-# import utils.h5data as h5d
+from h5data import load_training_data, create_dataset
 
 # set configuration parameters
 options = {}
-options["n_patches"] = 1000
+options["n_patches"] = 1500
 options["seed"] = 666
 options["modalities"] = ["T1", "FLAIR"]
 options["x_names"] = ["_t1.nii.gz", "_flair.nii.gz"]
 options["y_names"] = ["_lesion.nii.gz"]
 options["submask_names"] = ["subcorticalMask_final_negative.nii.gz"]
-options["patch_size"] = (18, 18, 18)
+options["patch_size"] = (16, 16, 16)
 
 options["thr"] = 0.1
 options["min_th"] = options["thr"]
@@ -39,11 +38,12 @@ y_names = options["y_names"]
 seed = options["seed"]
 print("seed: {}".format(seed))
 # Select an experiment name to store net weights and segmentation masks
-options["experiment"] = "noel_FCDdata_"
+options["experiment"] = "noel_FCDdata"
 
 options["model_dir"] = "./weights"  # weights/noel_dropoutMC_model_{1,2}.h5
 options["train_folder"] = "/host/hamlet/local_raid/data/ravnoor/01_Projects/55_Bayesian_DeepLesion_LoSo/data/"
-options["data_folder"] = "/host/hamlet/local_raid/data/ravnoorX/data/noel_hdf5"
+# options["data_folder"] = "/host/hamlet/local_raid/data/ravnoorX/data/noel_hdf5"
+options["data_folder"] = "/tmp/noel_hdf5"
 
 list_of_train_scans = os.listdir(options["train_folder"] + "brain")
 include_train = list(set(list_of_train_scans))
@@ -93,8 +93,11 @@ h5_fname = (
     + str(options["n_patches"])
     + "_patchsize_"
     + str(options["patch_size"][0])
-    + "_iso.h5"
+    + "_iso_fix.h5"
 )
+
+print(np.histogram(y, bins=2))
+
 datapath = os.path.join(options["data_folder"], h5_fname)
 print("\nhdf5 dataset is being created: {}".format(datapath))
 
@@ -103,3 +106,17 @@ create_dataset(datapath, X, y)
 end = time.time()
 diff = end - start
 print("time elapsed: ~ {} minutes".format(diff // 60))
+
+# validate the newly created dataset
+print("\nhdf5 dataset is being loaded: {}".format(datapath))
+
+# sample hdf5 dataset available from https://doi.org/10.5281/zenodo.3239446
+with h5py.File(datapath, "r") as f:
+    X = f['data'][:].astype('f')
+    y = f['labels'][:].astype('i')
+
+# output the shape of the patches and labels
+print(X.shape, y.shape)
+
+# should output equal number of positive and negative examples (0/1)
+print(np.histogram(y, bins=2))
