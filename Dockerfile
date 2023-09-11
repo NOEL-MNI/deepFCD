@@ -1,4 +1,4 @@
-FROM nvidia/cuda:10.0-cudnn7-devel-ubuntu18.04
+FROM noelmni/cuda:10.0-cudnn7-devel-ubuntu18.04
 LABEL maintainer="Ravnoor Singh Gill <ravnoor@gmail.com>" \
         org.opencontainers.image.title="deepFCD" \
         org.opencontainers.image.description="Automated Detection of Focal Cortical Dysplasia using Deep Learning" \
@@ -35,11 +35,11 @@ USER user
 ENV HOME=/home/user
 RUN chmod 777 /home/user
 
-RUN wget --quiet https://repo.anaconda.com/miniconda/Miniconda3-py37_4.12.0-Linux-x86_64.sh \
-    && /bin/bash Miniconda3-py37_4.12.0-Linux-x86_64.sh -b -p /home/user/conda \
-    && rm -f Miniconda3-py37_4.12.0-Linux-x86_64.sh
+RUN wget --quiet https://repo.anaconda.com/miniconda/Miniconda3-py37_23.1.0-1-Linux-x86_64.sh \
+    && /bin/bash Miniconda3-py37_23.1.0-1-Linux-x86_64.sh -b -p /home/user/conda \
+    && rm Miniconda3-py37_23.1.0-1-Linux-x86_64.sh
 
-RUN conda update -n base -c defaults conda
+# RUN conda update -n base -c defaults conda
 
 RUN git clone --depth 1 https://github.com/NOEL-MNI/deepMask.git \
     && rm -rf deepMask/.git
