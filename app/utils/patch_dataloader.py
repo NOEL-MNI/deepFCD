@@ -8,7 +8,7 @@ from nibabel import load as load_nii
 from scipy.ndimage import binary_dilation
 from tqdm import trange
 
-from utils.keras_bayes_utils import *
+from keras_bayes_utils import *
 
 
 def test_scan_uncertainty(
