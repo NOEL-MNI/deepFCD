@@ -9,6 +9,8 @@ TMPDIR	:= /host/hamlet/local_raid/data/ravnoor/sandbox
 BRAIN_MASKING := 1
 PREPROCESS		:= 1
 
+.PHONY: all clean
+
 build:
 	docker build -t $(ACCOUNT)/$(SERVICE):$(TAG) .
 
