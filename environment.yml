@@ -1,0 +1,11 @@
+name: deepfcd
+channels:
+  - conda-forge
+  - defaults
+dependencies:
+  - python=3.7
+  - keras=2.2.4
+  - theano=1.0.4
+  - pytorch=1.11.0
+  - h5py=2.10.0
+  - pip

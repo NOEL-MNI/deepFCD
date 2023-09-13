@@ -38,7 +38,7 @@ else:
     options['initial_epoch_2'] = 1
 
 # cases to exclude
-options['exclude'] = ['.DS_Store', '._.DS_Store', '078', '095']
+options['exclude'] = ['.DS_Store', '._.DS_Store']
 
 # threshold to select voxels for training, discarding CSF and darker WM in FLAIR
 options['thr'] = 0.1
@@ -46,9 +46,9 @@ options['min_th'] = options['thr'] # z-scored [10%ile=0.15, 15%ile=0.28, 20%ile=
 options['th_dnn_train_2'] = 0.1 # probabilistic
 
 # post-processing binary threshold. After segmentation, probabilistic masks are binarized using a defined threshold.
-options['t_bin'] = 0.1
+options['t_bin'] = 0.7
 # The resulting binary mask is filtered by removing lesion regions with lesion size before a defined value
-options['l_min'] = 25
+options['l_min'] = 75
 options['patch_size'] = (16,16,16)
 options['train_split'] = 0.25
 
