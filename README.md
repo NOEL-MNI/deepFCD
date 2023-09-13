@@ -7,8 +7,11 @@ python app/inference_bids.py -bp <bids directory> -sp <space> -dev cuda -pp -bm
 ***install***
 
 conda env create -f environment.yml
+
 conda activate deepfcd
+
 pip install -r app/deepMask/app/requirements.txt
+
 pip install -r app/requirements.txt
 
 
