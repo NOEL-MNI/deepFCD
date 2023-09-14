@@ -5,7 +5,7 @@
 
 <p align="center">
       <a href="https://www.python.org/">
-        <img src="https://img.shields.io/badge/Python-3.7-ff69b4.svg" /></a>
+        <img src="https://img.shields.io/badge/Python-3.7+-ff69b4.svg" /></a>
       <a href= "https://keras.io/">
         <img src="https://img.shields.io/badge/Keras-2.2.4-2BAF2B.svg" /></a>
       <a href= "https://github.com/Theano/Theano">
@@ -42,12 +42,12 @@ OR
 ## Pre-requisites
 ```bash
 0. Anaconda Python Environment
-1. Python == 3.7.x
+1. Python == 3.8
 2. Keras == 2.2.4
 3. Theano == 1.0.4
-4. ANTsPy == 0.3.5 (for MRI preprocessing)
-4. ANTsPyNet == 0.2.0 (for deepMask)
-5. PyTorch == 1.11.0 (for deepMask)
+4. ANTsPy == 0.4.2 (for MRI preprocessing)
+4. ANTsPyNet == 0.2.3 (for deepMask)
+5. PyTorch == 1.8.2 LTS (for deepMask)
 6. h5py == 2.10.0
 + app/requirements.txt
 + app/deepMask/app/requirements.txt
@@ -65,14 +65,14 @@ wget https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.sh -O ~/
 bash ~/miniconda.sh -b -p $HOME/miniconda
 
 # create and activate a Conda environment for preprocessing
-conda create -n preprocess python=3.7
+conda create -n preprocess python=3.8
 conda activate preprocess
 # install dependencies using pip
 python -m pip install -r app/deepMask/app/requirements.txt
 conda deactivate
 
 # create and activate a Conda environment for deepFCD
-conda create -n deepFCD python=3.7
+conda create -n deepFCD python=3.8
 conda activate deepFCD
 # install dependencies using pip
 python -m pip install -r app/requirements.txt
