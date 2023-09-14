@@ -1,4 +1,4 @@
-antspyx==0.3.5 --only-binary=antspyx
+antspyx==0.4.2 --only-binary=antspyx
 git+https://github.com/ravnoor/atlasreader@master#egg=atlasreader
 Theano==1.0.4
 keras==2.2.4
@@ -15,5 +15,5 @@ scikit-learn==1.0.2
 scipy==1.7.3
 setproctitle==1.2.3
 tabulate==0.9.0
-tqdm==4.64.0
+tqdm==4.65.0
 xlrd==2.0.1

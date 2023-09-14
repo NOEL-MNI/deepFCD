@@ -7,7 +7,7 @@ from scipy.ndimage import binary_dilation
 from tqdm import tqdm
 from tqdm.contrib import tzip
 
-from .patch_dataloader import (binarize_label_gm,
+from patch_dataloader import (binarize_label_gm,
                                select_voxels_from_previous_model)
 
 
@@ -38,7 +38,7 @@ def create_dataset(data_path, X, y):
         y_dset = f.create_dataset(
             "labels",
             y.shape,
-            dtype="i",
+            dtype="i8",
             compression="gzip",
             compression_opts=9,
             shuffle=True,
@@ -73,7 +73,7 @@ def load_train_patches(
 
     # load images and normalize their intensties
     images = [
-        load_nii(name).get_data() for name in tqdm(x_data, desc="loading MRI images")
+        load_nii(name).get_fdata() for name in tqdm(x_data, desc="loading MRI images")
     ]
     images_norm = [
         (im.astype(dtype=datatype) - im[np.nonzero(im)].mean())
@@ -84,14 +84,14 @@ def load_train_patches(
 
     # load labels
     lesion_masks = [
-        binarize_label_gm(load_nii(name).get_data())
+        binarize_label_gm(load_nii(name).get_fdata())
         for name in tqdm(y_data, desc="loading lesion labels")
     ]  # preserve only the GM component, ignore, WM and transmantle sign
 
     # load subcortical masks to exclude these voxels from training
     if subcort_masks is not None:
         submasks = [
-            load_nii(name).get_data()
+            load_nii(name).get_fdata()
             for name in tqdm(subcort_masks, desc="load subcortical masks")
         ]
         nolesion_masks = [
@@ -112,6 +112,14 @@ def load_train_patches(
             )
         ]
 
+    # lesional_vox = 0
+    # for lesion in lesion_masks:
+    #     lesion_size = np.sum(lesion)
+    #     lesional_vox += lesion_size
+    #     if lesion_size < 1000:
+    #         print("\nlesion_size: {}".format(lesion_size))
+    # print("\ntotal lesional voxels: {}".format(lesional_vox))
+    
     # Get all the x,y,z coordinates for each image
     lesion_centers = [
         get_mask_voxels(mask)
@@ -137,12 +145,12 @@ def load_train_patches(
     ]
     x_pos_patches = [
         np.array(get_patches(image, centers, patch_size))
-        for image, centers in zip(images_norm, lesion_small)
+        for image, centers in tzip(images_norm, lesion_small, desc="extract positive patches")
     ]
-    y_pos_patches = [
-        np.array(get_patches(image, centers, patch_size))
-        for image, centers in zip(lesion_masks, lesion_small)
-    ]
+    # y_pos_patches = [
+    #     np.array(get_patches(image, centers, patch_size))
+    #     for image, centers in tzip(lesion_masks, lesion_small, desc="extract positive patch labels")
+    # ]
 
     # load as many random negatives (non-lesions) samples as positive (lesions) samples
     indices = [
@@ -157,22 +165,23 @@ def load_train_patches(
     ]
     x_neg_patches = [
         np.array(get_patches(image, centers, patch_size))
-        for image, centers in zip(images_norm, nolesion_small)
+        for image, centers in tzip(images_norm, nolesion_small,  desc="extract negative patches")
     ]
-    y_neg_patches = [
-        np.array(get_patches(image, centers, patch_size))
-        for image, centers in zip(lesion_masks, nolesion_small)
-    ]
+    # y_neg_patches = [
+    #     np.array(get_patches(image, centers, patch_size))
+    #     for image, centers in tzip(lesion_masks, nolesion_small, desc="extract negative patch labels")
+    # ]
 
     # concatenate positive and negative patches for each subject
     X = np.concatenate(
-        [np.concatenate([x1, x2]) for x1, x2 in zip(x_pos_patches, x_neg_patches)],
-        axis=0,
-    )
+        [np.concatenate([x1, x2]) for x1, x2 in zip(x_pos_patches, x_neg_patches)], axis=0
+        )
+    # Y = np.concatenate(
+    #     [np.concatenate([y1, y2]) for y1, y2 in zip(y_pos_patches, y_neg_patches)], axis=0
+    #     )
     Y = np.concatenate(
-        [np.concatenate([y1, y2]) for y1, y2 in zip(y_pos_patches, y_neg_patches)],
-        axis=0,
-    )
+        [np.concatenate([np.ones(y1.shape[0]), np.zeros(y2.shape[0])]) for y1, y2 in zip(x_pos_patches, x_neg_patches)], axis=0
+        )
 
     return X, Y
 
@@ -246,8 +255,7 @@ def load_training_data(train_x_data, train_y_data, options, subcort_masks, model
         data.append(x_patches)
     # stack patches along the channels' dimension [samples, channels, p1, p2, p3]
     X = np.stack(data, axis=1)
-    Y = y_patches
-    print(X.shape, Y.shape)
+    y = y_patches
 
     # apply randomization if selected
     if options["randomize_train"]:
@@ -255,12 +263,10 @@ def load_training_data(train_x_data, train_y_data, options, subcort_masks, model
         np.random.seed(seed)
         X = np.random.permutation(X.astype(dtype=np.float32))
         np.random.seed(seed)
-        Y = np.random.permutation(Y.astype(dtype=np.int32))
-
-    # Y = [num_samples, p1, p2, p3]
-    Y = Y[:, Y.shape[1] // 2, Y.shape[2] // 2, Y.shape[3] // 2]
-
-    Y = np.squeeze(Y)
+        Y = np.random.permutation(y.astype(dtype=np.int8))
+    else:
+        X = X.astype(dtype=np.float32)
+        Y = y.astype(dtype=np.int8)
 
     return X, Y
 
@@ -323,7 +329,7 @@ def select_training_voxels(input_masks, threshold=0.1, datatype=np.float32, t1=0
     """
 
     # load images and normalize their intensities
-    images = [load_nii(image_name).get_data() for image_name in input_masks]
+    images = [load_nii(image_name).get_fdata() for image_name in input_masks]
     images_norm = [
         (im.astype(dtype=datatype) - im[np.nonzero(im)].mean())
         / im[np.nonzero(im)].std()
@@ -332,7 +338,7 @@ def select_training_voxels(input_masks, threshold=0.1, datatype=np.float32, t1=0
 
     # select voxels with intensity higher than threshold
     rois = [
-        image > threshold for image in tqdm(images_norm, desc="extract sampling masks")
+        image > threshold for image in tqdm(images_norm, desc="extract sampling masks from FLAIR thresholding")
     ]
     return rois
 
