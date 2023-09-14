@@ -147,7 +147,7 @@ modalities = ["T1", "FLAIR"]
 x_names = options["x_names"]
 
 # seed = options['seed']
-options["dropout_mc"] = False # TODO was True
+options["dropout_mc"] = True # TODO was True
 options["batch_size"] = 350000
 options["mini_batch_size"] = 2048
 options["load_checkpoint_1"] = True
@@ -243,9 +243,12 @@ for s in tqdm(subjects, desc="serving predictions using the trained model", colo
 
     if np.logical_and(os.path.isfile(pred_mean_fname), os.path.isfile(pred_var_fname)):
         logging.info("prediction for {} already exists".format(fullid))
-        transform_img(pred_mean_fname,bids.layout.parse_file_entities(pred_mean_fname),orig_files[0],transform_files[0],targetspace=orig_bidsfiles[0].entities['space'],invert=True)
-        transform_img(pred_var_fname,bids.layout.parse_file_entities(pred_var_fname),orig_files[0],transform_files[0],targetspace=orig_bidsfiles[0].entities['space'],invert=True)
-        continue
+        if not args_.overwrite:
+            transform_img(pred_mean_fname,bids.layout.parse_file_entities(pred_mean_fname),orig_files[0],transform_files[0],targetspace=orig_bidsfiles[0].entities['space'],invert=True)
+            transform_img(pred_var_fname,bids.layout.parse_file_entities(pred_var_fname),orig_files[0],transform_files[0],targetspace=orig_bidsfiles[0].entities['space'],invert=True)
+            continue
+        else:
+            logging.info("overwriting...")
 
     options["test_scan"] = fullid
 
