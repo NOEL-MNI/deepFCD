@@ -59,10 +59,10 @@ print(args_.bidspath)
 orig_ds = BIDSLayout(args_.bidspath, validate=False)
 print(orig_ds)
 
-if args_.subject is None:
+if args_.subjects is None:
     subjects = orig_ds.get_subjects()
 else:
-    subjects = [s.replace('sub-','') for s in args_.subject]
+    subjects = [s.replace('sub-','') for s in args_.subjects]
     print(subjects)
     
 # GPU/CPU options
@@ -128,10 +128,10 @@ else:
     )
 
 proc_ds = BIDSLayout(outdir, validate=False)
-if args_.subject is None:
+if args_.subjects is None:
     subjects = proc_ds.get_subjects()
 else:
-    subjects = [s.replace('sub-','') for s in args_.subject]
+    subjects = [s.replace('sub-','') for s in args_.subjects]
     print(subjects)
     
 print(proc_ds)
