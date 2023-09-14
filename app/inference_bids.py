@@ -48,7 +48,7 @@ parser.add_argument('-bm','--brainmask',action='store_true',default=False)
 parser.add_argument('-pp','--preprocess',action='store_true',default=False)
 parser.add_argument('-o','--overwrite',action='store_true',default=False)
 parser.add_argument('-dev','--device',default='cpu')
-parser.add_argument('-s','--subject',default=None)
+parser.add_argument('-s','--subjects', nargs='+', default=None)
 
 args_ = parser.parse_args()
 
@@ -62,7 +62,7 @@ print(orig_ds)
 if args_.subject is None:
     subjects = orig_ds.get_subjects()
 else:
-    subjects = [args_.subject.replace('sub-','')]
+    subjects = [s.replace('sub-','') for s in args_.subject]
     print(subjects)
     
 # GPU/CPU options
@@ -131,7 +131,7 @@ proc_ds = BIDSLayout(outdir, validate=False)
 if args_.subject is None:
     subjects = proc_ds.get_subjects()
 else:
-    subjects = [args_.subject.replace('sub-','')]
+    subjects = [s.replace('sub-','') for s in args_.subject]
     print(subjects)
     
 print(proc_ds)
