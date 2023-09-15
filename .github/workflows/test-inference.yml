@@ -31,6 +31,7 @@ jobs:
 
       - name: Download input files for inference # https://openneuro.org/datasets/ds004199/versions/1.0.5
         run: |
+          mkdir -p ~/io/sub-00055
           wget https://s3.amazonaws.com/openneuro.org/ds004199/sub-00055/anat/sub-00055_acq-sag111_T1w.nii.gz\?versionId\=IKGWDiLR7B7ls2yPVyycJo.6R1Sqhujf -O ~/io/sub-00055/t1.nii.gz
           wget https://s3.amazonaws.com/openneuro.org/ds004199/sub-00055/anat/sub-00055_acq-tse3dvfl_FLAIR.nii.gz\?versionId\=HmzYoUuYkdbyd8jkpdJjVkZydRHNSqUX -O ~/io/sub-00055/flair.nii.gz
           wget https://s3.amazonaws.com/openneuro.org/ds004199/sub-00055/anat/sub-00055_acq-tse3dvfl_FLAIR_roi.nii.gz\?versionId\=ulmEU3nb8WCvGwcwTbkcdNSVr07PMPQN -O ~/io/sub-00055/label.nii.gz
