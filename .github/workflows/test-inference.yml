@@ -16,11 +16,10 @@ jobs:
 
       - name: Install dependencies for deepMask
         run: |
-          wget https://raw.githubusercontent.com/NOEL-MNI/deepMask/main/app/requirements.txt -O /tmp/requirements.txt
           eval "$(conda shell.bash hook)"
           conda create -n preprocess python=3.8
           conda activate preprocess
-          python -m pip install -r /tmp/requirements.txt
+          python -m pip install -r ./app/deepMask/app/requirements.txt
           conda deactivate
 
       - name: Install dependencies for deepFCD
