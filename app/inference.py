@@ -76,6 +76,9 @@ args.outdir = os.path.join(args.dir, args.id)
 
 args.t1 = os.path.join(args.outdir, args.t1_fname)
 args.t2 = os.path.join(args.outdir, args.t2_fname)
+
+args.t1_orig, args.t2_orig = args.t1, args.t2
+
 cwd = os.path.realpath(os.path.dirname(__file__))
 
 if bool(args.brain_masking):
@@ -176,7 +179,7 @@ t2_transform = os.path.join(
 
 files = [args.t1, args.t2]
 
-orig_files = {"T1": args.t1, "FLAIR": args.t2}
+orig_files = {"T1": args.t1_orig, "FLAIR": args.t2_orig}
 
 transform_files = [t1_transform, t2_transform]
 # files = {}
