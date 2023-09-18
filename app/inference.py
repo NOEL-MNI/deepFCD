@@ -111,7 +111,7 @@ else:
 
 if os.environ.get("CI_TESTING") is not None:
     options["CI_TESTING_GT"] = os.environ.get("CI_TESTING_GT")
-    logging.info("CI environment initialized: {}".format(options["CI_TESTING_GT"]))
+    print("CI environment initialized: {}".format(options["CI_TESTING_GT"]))
     mask = ants.image_read(options["CI_TESTING_GT"])
     t1, t2 = ants.image_read(args.t1), ants.image_read(args.t2)
     ants.mask_image(t1, mask, level=1, binarize=False).to_filename(args.t1)
