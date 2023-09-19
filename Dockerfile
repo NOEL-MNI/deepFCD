@@ -58,6 +58,8 @@ RUN python -m pip install -r /app/requirements.txt \
 
 COPY app/ /app/
 
+COPY tests/ /tests/
+
 RUN sudo chmod -R 777 /app && sudo chmod +x /app/inference.py
 
 CMD ["python3"]

@@ -1,11 +1,12 @@
 ACCOUNT := noelmni
 SERVICE := deep-fcd
 IMAGE 	:= $(ACCOUNT)/$(SERVICE) # noelmni/deep-fcd
-TAG		:= resamp_orig
+TAG		:= latest
 UID		:= 2551
 GID		:= 618
 CASE_ID := sub-00055
 TMPDIR	:= /host/hamlet/local_raid/data/ravnoor/sandbox
+PRED_DIR	:= /host/hamlet/local_raid/data/ravnoor/sandbox/pytests
 BRAIN_MASKING := 1
 PREPROCESS		:= 1
 
@@ -47,6 +48,17 @@ test-pipeline-docker_ci:
 	$(ACCOUNT)/$(SERVICE):$(TAG) \
 	/app/inference.py $(CASE_ID) T1.nii.gz FLAIR.nii.gz /tmp cuda0 $(BRAIN_MASKING) $(PREPROCESS)
 
+test-pipeline-docker_testing:
+	docker run --rm -it --init \
+	--gpus=all	\
+	--user="$(UID):$(GID)" \
+	--volume="$(PRED_DIR):/tmp" \
+	--env CI_TESTING=1 \
+	--env CI_TESTING_PATIENT_ID=$(CASE_ID) \
+	--env CI_TESTING_PRED_DIR=/tmp \
+	$(ACCOUNT)/$(SERVICE):$(TAG) \
+		bash /tests/run_tests.sh
+
 test-reporting:
 	./app/utils/reporting.py $(CASE_ID) $(TMPDIR)/
 
@@ -68,22 +80,22 @@ prune:
 	docker image prune
 
 runner-build:
-	docker-compose -f runner.docker-compose.yml build
+	docker-compose -f ci/runner.docker-compose.yml build
 
 runner-ps:
-	docker-compose -f runner.docker-compose.yml ps
+	docker-compose -f ci/runner.docker-compose.yml ps
 
 runner-up:
-	docker-compose -f runner.docker-compose.yml up --remove-orphans -d
+	docker-compose -f ci/runner.docker-compose.yml up --remove-orphans -d
 
 runner-down:
-	docker-compose -f runner.docker-compose.yml down
+	docker-compose -f ci/runner.docker-compose.yml down
 
 runner-logs:
-	docker-compose -f runner.docker-compose.yml logs -f
+	docker-compose -f ci/runner.docker-compose.yml logs -f
 
 runner-scale:
-	docker-compose up --scale runner=1 -d
+	docker-compose -f ci/runner.docker-compose.yml up --scale runner=1 -d
 
 runner-bash:
-	docker-compose -f runner.docker-compose.yml exec -it runner bash
+	docker-compose -f ci/runner.docker-compose.yml exec -it runner bash

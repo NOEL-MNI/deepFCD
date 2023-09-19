@@ -33,18 +33,21 @@ jobs:
 
       - name: Download openneuro.org dataset to test the inference pipeline # https://openneuro.org/datasets/ds004199/versions/1.0.5
         run: |
-          mkdir -p ~/io/${PATIENT_ID}
+          mkdir -p ~/io/${CI_TESTING_PATIENT_ID}
           echo "retrieving single-patient multimodal dataset.."
-          wget ${BASE_URL}/${PATIENT_ID}_acq-sag111_T1w.nii.gz\?versionId\=IKGWDiLR7B7ls2yPVyycJo.6R1Sqhujf -O ~/io/${PATIENT_ID}/t1.nii.gz
-          wget ${BASE_URL}/${PATIENT_ID}_acq-tse3dvfl_FLAIR.nii.gz\?versionId\=HmzYoUuYkdbyd8jkpdJjVkZydRHNSqUX -O ~/io/${PATIENT_ID}/flair.nii.gz
-          wget ${BASE_URL}/${PATIENT_ID}_acq-tse3dvfl_FLAIR_roi.nii.gz\?versionId\=ulmEU3nb8WCvGwcwTbkcdNSVr07PMPQN -O ~/io/${PATIENT_ID}/label.nii.gz
+          wget ${BASE_URL}/${CI_TESTING_PATIENT_ID}_acq-sag111_T1w.nii.gz\?versionId\=IKGWDiLR7B7ls2yPVyycJo.6R1Sqhujf -O ~/io/${CI_TESTING_PATIENT_ID}/t1.nii.gz
+          wget ${BASE_URL}/${CI_TESTING_PATIENT_ID}_acq-tse3dvfl_FLAIR.nii.gz\?versionId\=HmzYoUuYkdbyd8jkpdJjVkZydRHNSqUX -O ~/io/${CI_TESTING_PATIENT_ID}/flair.nii.gz
+          wget ${BASE_URL}/${CI_TESTING_PATIENT_ID}_acq-tse3dvfl_FLAIR_roi.nii.gz\?versionId\=ulmEU3nb8WCvGwcwTbkcdNSVr07PMPQN -O ~/io/${CI_TESTING_PATIENT_ID}/label.nii.gz
         env:
-          PATIENT_ID=sub-00055
-          BASE_URL=https://s3.amazonaws.com/openneuro.org/ds004199/${PATIENT_ID}/anat
+          CI_TESTING_PATIENT_ID: sub-00055
+          BASE_URL: https://s3.amazonaws.com/openneuro.org/ds004199/${CI_TESTING_PATIENT_ID}/anat
 
       - name: Run inference for deepFCD
         run: |
           ./app/inference.py sub-00055 t1.nii.gz flair.nii.gz ~/io cuda 1 1
         env:
-          CI_TESTING_GT: "./tests/segmentations/sub-00055/sub-00055_label_dilated_final.nii.gz"
-          CI_TESTING_PRED_DIR: "/home/ga/io/${PATIENT_ID}/"
+          CI_TESTING_GT: "./tests/segmentations/${CI_TESTING_PATIENT_ID}/${CI_TESTING_PATIENT_ID}_label_dilated_final.nii.gz"
+          CI_TESTING_PRED_DIR: "/home/ga/io"
+
+      - name: Run tests to compare outputs with previous validated runs
+        run: ./tests/run_tests.sh
