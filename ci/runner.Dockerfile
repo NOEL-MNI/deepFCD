@@ -11,6 +11,7 @@ LABEL maintainer="Ravnoor Singh Gill <ravnoor@gmail.com>" \
 RUN apt-key adv --fetch-keys https://developer.download.nvidia.com/compute/cuda/repos/ubuntu1804/x86_64/3bf863cc.pub
 
 ARG RUNNER_VERSION=2.309.0
+ARG NVM_VERSION=0.39.5
 
 ENV DEBIAN_FRONTEND=noninteractive
 RUN apt-get update -y
@@ -32,7 +33,7 @@ ENV HOME=/home/ga
 
 # https://stackoverflow.com/questions/25899912/how-to-install-nvm-in-docker/60137919#60137919
 SHELL ["/bin/bash", "--login", "-i", "-c"]
-RUN curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.5/install.sh | bash
+RUN curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v${NVM_VERSION}/install.sh | bash
 RUN source /root/.bashrc && nvm install 16
 SHELL ["/bin/bash", "--login", "-c"]
 

@@ -11,6 +11,7 @@ services:
       dockerfile: runner.Dockerfile
       args:
         RUNNER_VERSION: '2.309.0'
+        NVM_VERSION: '0.39.5'
     deploy:
       resources:
         reservations:
