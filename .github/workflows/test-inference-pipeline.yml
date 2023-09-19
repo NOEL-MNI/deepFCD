@@ -50,4 +50,4 @@ jobs:
           CI_TESTING_PRED_DIR: "/home/ga/io"
           
       - name: Run tests to compare outputs with previous validated runs
-        run: ./tests/run_tests.sh
+        run: bash ./tests/run_tests.sh
