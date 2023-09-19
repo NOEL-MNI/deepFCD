@@ -46,7 +46,7 @@ jobs:
           ./app/inference.py ${CI_TESTING_PATIENT_ID} t1.nii.gz flair.nii.gz ~/io cuda 1 1
         env:
           CI_TESTING_PATIENT_ID: "sub-00055"
-          CI_TESTING_GT: "./tests/segmentations/${CI_TESTING_PATIENT_ID}/${CI_TESTING_PATIENT_ID}_label_dilated_final.nii.gz"
+          CI_TESTING_GT: "./tests/segmentations/sub-00055/sub-00055_label_dilated_final.nii.gz"
           CI_TESTING_PRED_DIR: "/home/ga/io"
           
       - name: Run tests to compare outputs with previous validated runs
