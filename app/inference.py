@@ -109,6 +109,14 @@ else:
         "Skipping image preprocessing and brain masking, presumably images are co-registered, bias-corrected, and skull-stripped"
     )
 
+if os.environ.get("CI_TESTING") is not None:
+    options["CI_TESTING_GT"] = os.environ.get("CI_TESTING_GT")
+    print("CI environment initialized: {}".format(options["CI_TESTING_GT"]))
+    mask = ants.image_read(options["CI_TESTING_GT"])
+    t1, t2 = ants.image_read(args.t1), ants.image_read(args.t2)
+    ants.mask_image(t1, mask, level=1, binarize=False).to_filename(args.t1)
+    ants.mask_image(t2, mask, level=1, binarize=False).to_filename(args.t2)
+
 # deepFCD configuration
 K.set_image_dim_ordering("th")
 K.set_image_data_format("channels_first")  # TH dimension ordering in this code

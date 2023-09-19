@@ -1,0 +1,28 @@
+version: '3.9'
+
+services:
+  runner:
+    image: noelmni/deep-fcd:runner_alpha
+    # command: '/app/inference.py FCD_001 T1.nii.gz FLAIR.nii.gz /io cuda0 1 1'
+    # command: nvidia-smi
+    # entrypoint: /bin/bash
+    build:
+      context: .
+      dockerfile: runner.Dockerfile
+      args:
+        RUNNER_VERSION: '2.309.0'
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              # count: 1
+              device_ids: ['1']
+              capabilities: [gpu]
+    # volumes:
+        # - '$PWD/io:/io'
+        # - /var/run/docker.sock:/var/run/docker.sock
+    environment:
+      GH_TOKEN: ${GH_TOKEN}
+      GH_OWNER: ${GH_OWNER}
+      GH_REPOSITORY: ${GH_REPOSITORY}

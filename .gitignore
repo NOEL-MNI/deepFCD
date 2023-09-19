@@ -5,3 +5,4 @@ notebooks/
 *.csv
 memray*.bin
 memray*.html
+.env

@@ -188,7 +188,7 @@ chmod +x ./app/utils/reporting.py
 ```
 #### example:
 ```bash
-./app/utils/inference.py FCD_001 /io
+./app/utils/reporting.py FCD_001 /io
 ```
 
 ### 4.2 Reporting output using Docker
