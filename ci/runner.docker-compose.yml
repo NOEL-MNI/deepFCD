@@ -2,7 +2,7 @@ version: '3.9'
 
 services:
   runner:
-    image: noelmni/deep-fcd:runner_alpha
+    image: noelmni/deep-fcd:runner_latest
     # command: '/app/inference.py FCD_001 T1.nii.gz FLAIR.nii.gz /io cuda0 1 1'
     # command: nvidia-smi
     # entrypoint: /bin/bash
