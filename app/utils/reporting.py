@@ -15,6 +15,7 @@ import sys
 import nibabel as nib
 import numpy as np
 from nibabel import load as load_nii
+from sklearn import preprocessing
 from tabulate import tabulate
 
 from atlasreader.atlasreader import read_atlas_peak
@@ -59,7 +60,9 @@ affine = header.get_qform()
 out_scan = nib.Nifti1Image(output_scan, affine=affine, header=header)
 
 results.sort_values("rank")
-results["confidence"] = (1 / results["var"]) / results["var"].max()
+min_max_scaler = preprocessing.MinMaxScaler()
+invert_var = 1 / results["var"]
+results["confidence"] = np.round(100.0 * min_max_scaler.fit_transform(invert_var.values.reshape(-1, 1)), 1)
 ranked_results = results.sort_values("rank")
 ranked_results.reset_index(inplace=True)
 
