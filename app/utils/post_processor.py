@@ -56,7 +56,7 @@ def post_processing(input_scan, options, header, save_nifti=True):
             current_voxels = np.stack(np.where(pred_labels == l), axis=1)
             labels_scan[
                 current_voxels[:, 0], current_voxels[:, 1], current_voxels[:, 2]
-            ] = num_elements_by_lesion[l].astype(np.int)
+            ] = label_list[l]
 
     count = np.count_nonzero(num_elements_by_lesion.astype(dtype=np.int) > l_min)
 
