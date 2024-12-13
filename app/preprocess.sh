@@ -25,19 +25,15 @@ OUTDIR=${BASEDIR}/${ID}/        # args.outdir = os.path.join(args.dir, args.id)
 
 PWD=$(dirname "$0")
 
-conda=${CONDA_EXE}
-eval "$(conda shell.bash hook)"
-conda activate preprocess
-# echo $CONDA_PREFIX
+eval "$(micromamba shell hook --shell posix)"
+micromamba activate
 
 if [ ${PREPROCESSING} -eq 1 ] && [ ${USE_GPU} -eq 0 ]; then
-	python3 $PWD/preprocess.py -i ${ID} -t1 ${T1_FNAME} -t2 ${T2_FNAME} -d ${BASEDIR} --preprocess
+	micromamba run -n preprocess python3 $PWD/preprocess.py -i ${ID} -t1 ${T1_FNAME} -t2 ${T2_FNAME} -d ${BASEDIR} --preprocess
 elif [ ${PREPROCESSING} -eq 0 ] && [ ${USE_GPU} -eq 1 ]; then	
-	python3 $PWD/preprocess.py -i ${ID} -t1 ${T1_FNAME} -t2 ${T2_FNAME} -d ${BASEDIR} --use_gpu
+	micromamba run -n preprocess python3 $PWD/preprocess.py -i ${ID} -t1 ${T1_FNAME} -t2 ${T2_FNAME} -d ${BASEDIR} --use_gpu
 elif [ ${PREPROCESSING} -eq 1 ] && [ ${USE_GPU} -eq 1 ]; then
-	python3 $PWD/preprocess.py -i ${ID} -t1 ${T1_FNAME} -t2 ${T2_FNAME} -d ${BASEDIR} --preprocess --use_gpu
+	micromamba run -n preprocess python3 $PWD/preprocess.py -i ${ID} -t1 ${T1_FNAME} -t2 ${T2_FNAME} -d ${BASEDIR} --preprocess --use_gpu
 else
-    python3 $PWD/preprocess.py -i ${ID} -t1 ${T1_FNAME} -t2 ${T2_FNAME} -d ${BASEDIR}
+  micromamba run -n preprocess python3 $PWD/preprocess.py -i ${ID} -t1 ${T1_FNAME} -t2 ${T2_FNAME} -d ${BASEDIR}
 fi
-
-conda deactivate
