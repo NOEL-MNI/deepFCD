@@ -29,6 +29,7 @@ jobs:
         run: |
           eval "$(conda shell.bash hook)"
           conda create -n deepFCD python=3.8
+          conda activate deepFCD
           python -m pip install -r ./app/requirements.txt
           conda install -c conda-forge pygpu==0.7.6
           pip cache purge
