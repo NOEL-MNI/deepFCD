@@ -27,9 +27,12 @@ jobs:
 
       - name: Install dependencies for deepFCD
         run: |
+          eval "$(conda shell.bash hook)"
+          conda create -n deepFCD python=3.8
           python -m pip install -r ./app/requirements.txt
           conda install -c conda-forge pygpu==0.7.6
           pip cache purge
+          conda deactivate
 
       - name: Download openneuro.org dataset to test the inference pipeline # https://openneuro.org/datasets/ds004199/versions/1.0.5
         run: |
@@ -43,7 +46,7 @@ jobs:
 
       - name: Run inference for deepFCD
         run: |
-          ./app/inference.py ${CI_TESTING_PATIENT_ID} t1.nii.gz flair.nii.gz ~/io cuda 1 1
+          conda run -n deepFCD ./app/inference.py ${CI_TESTING_PATIENT_ID} t1.nii.gz flair.nii.gz ~/io cuda 1 1
         env:
           CI_TESTING_PATIENT_ID: "sub-00055"
           CI_TESTING_GT: "./tests/segmentations/sub-00055/sub-00055_label_dilated_final.nii.gz"
