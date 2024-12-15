@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+#!/usr/bin/env conda run -n deepFCD python3
 
 import logging
 import multiprocessing
@@ -128,7 +128,7 @@ x_names = options["x_names"]
 # seed = options['seed']
 options["dropout_mc"] = True
 options["batch_size"] = 350000
-options["mini_batch_size"] = 2048
+options["mini_batch_size"] =  8192 # 1536 uses 3700MiB of GPU VRAM; 8192:18888MiB
 options["load_checkpoint_1"] = True
 options["load_checkpoint_2"] = True
 
