@@ -1,4 +1,4 @@
-#!/usr/bin/env -S conda run -n deepFCD python3
+#!/usr/bin/env python3
 
 import logging
 import multiprocessing
