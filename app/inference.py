@@ -137,7 +137,7 @@ options["test_folder"] = args.dir
 options["weight_paths"] = os.path.join(cwd, "weights")
 options["experiment"] = "noel_deepFCD_dropoutMC"
 logging.info("experiment: {}".format(options["experiment"]))
-spt.setproctitle(options["experiment"])
+spt.setproctitle(options["experiment"]+'_'+args.id)
 
 # --------------------------------------------------
 # initialize the CNN
