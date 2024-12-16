@@ -1,17 +1,11 @@
-FROM noelmni/cuda:10.0-cudnn7-devel-ubuntu18.04
+FROM nvidia/cuda:11.8.0-cudnn8-devel-ubuntu22.04
+
 LABEL maintainer="Ravnoor Singh Gill <ravnoor@gmail.com>" \
         org.opencontainers.image.title="Self-hosted Github Actions runner for deepFCD" \
         org.opencontainers.image.description="Automated Detection of Focal Cortical Dysplasia using Deep Learning" \
         org.opencontainers.image.licenses="BSD-3-Clause" \
         org.opencontainers.image.source="https://github.com/NOEL-MNI/deepFCD" \
         org.opencontainers.image.url="https://github.com/NOEL-MNI/deepFCD"
-
-# manually update outdated repository key
-# fixes invalid GPG error: https://forums.developer.nvidia.com/t/gpg-error-http-developer-download-nvidia-com-compute-cuda-repos-ubuntu1804-x86-64/212904
-RUN apt-key adv --fetch-keys https://developer.download.nvidia.com/compute/cuda/repos/ubuntu1804/x86_64/3bf863cc.pub
-
-ARG RUNNER_VERSION=2.309.0
-ARG NVM_VERSION=0.39.5
 
 ENV DEBIAN_FRONTEND=noninteractive
 RUN apt-get update -y
@@ -24,26 +18,16 @@ RUN add-apt-repository ppa:git-core/candidate -y
 RUN apt-get update
 RUN apt-get install -y git
 
-RUN apt-get remove nodejs npm
-
 # github actions needs a non-root to run
 RUN useradd -m ga 
 WORKDIR /home/ga/actions-runner
 ENV HOME=/home/ga
 
-# https://stackoverflow.com/questions/25899912/how-to-install-nvm-in-docker/60137919#60137919
-SHELL ["/bin/bash", "--login", "-i", "-c"]
-RUN curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v${NVM_VERSION}/install.sh | bash
-RUN source /root/.bashrc && nvm install 16
-SHELL ["/bin/bash", "--login", "-c"]
-
 # install Github Actions runner
+ARG RUNNER_VERSION=2.321.0
 RUN curl -s -O -L https://github.com/actions/runner/releases/download/v${RUNNER_VERSION}/actions-runner-linux-x64-${RUNNER_VERSION}.tar.gz && \
     tar xzf ./actions-runner-linux-x64-${RUNNER_VERSION}.tar.gz && \
     ./bin/installdependencies.sh
-
-# RUN wget -c https://github.com/NixOS/patchelf/releases/download/0.18.0/patchelf-0.18.0-x86_64.tar.gz && \
-#     ./bin/patchelf --set-interpreter /opt/glibc-2.28/lib/ld-linux-x86-64.so.2 --set-rpath /opt/glibc-2.28/lib/ /home/ga/.nvm/versions/node/v20.6.1/bin/node
 
 # add over the start.sh script
 ADD start-runner.sh start.sh
@@ -51,15 +35,32 @@ ADD start-runner.sh start.sh
 # make the script executable
 RUN chmod +x start.sh
 
+# install micromamba
+ARG MAMBA_VERSION=2.0.5-0
+RUN wget -O /usr/bin/micromamba https://github.com/mamba-org/micromamba-releases/releases/download/${MAMBA_VERSION}/micromamba-linux-64 && \
+    chmod +x /usr/bin/micromamba
+
 # set permission and user to ga
 RUN chown -R ga /home/ga
 USER ga
 
-# install Conda
-RUN wget --quiet https://repo.anaconda.com/miniconda/Miniconda3-py38_23.5.2-0-Linux-x86_64.sh && \
-    /bin/bash Miniconda3-py38_23.5.2-0-Linux-x86_64.sh -b && \
-    rm Miniconda3-py38_23.5.2-0-Linux-x86_64.sh && \
-    echo '. ~/miniconda3/etc/profile.d/conda.sh' >> ~/.bashrc
+# initialize micromamba
+ENV MAMBA_EXE=/usr/bin/micromamba
+ENV MAMBA_ROOT_PREFIX=/home/ga/micromamba
+ENV CONDA_DEFAULT_ENV=base
+ENV MAMBA_USER=ga
+RUN micromamba shell init --shell bash
+# this activates the base environment with py38
+RUN eval "$(micromamba shell hook -s posix)" && \
+    micromamba activate && \
+    micromamba install python=3.8 -c conda-forge
+
+# activate micromamba base env
+RUN echo "micromamba activate" >> ~/.bashrc
+
+# set aliases for conda
+RUN echo "alias mamba='/usr/bin/micromamba'" >> ~/.bash_aliases && \
+    echo "alias conda='/usr/bin/micromamba'" >> ~/.bash_aliases
 
 # create a dir to store inputs and outputs
 RUN mkdir ~/io

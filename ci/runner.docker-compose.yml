@@ -10,16 +10,16 @@ services:
       context: .
       dockerfile: runner.Dockerfile
       args:
-        RUNNER_VERSION: '2.309.0'
-        NVM_VERSION: '0.39.5'
+        RUNNER_VERSION: '2.321.0'
+        MAMBA_VERSION: '2.0.5-0'
     deploy:
       resources:
         reservations:
           devices:
             - driver: nvidia
-              # count: 1
-              device_ids: ['1']
-              capabilities: [gpu]
+              count: 1
+              # device_ids: ['1']
+              capabilities: [gpu,compute,video]
     # volumes:
         # - '$PWD/io:/io'
         # - /var/run/docker.sock:/var/run/docker.sock
