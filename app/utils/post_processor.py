@@ -67,12 +67,18 @@ def post_processing(input_scan, options, header, save_nifti=True):
     # save the output segmentation as nifti
     if save_nifti:
         nii_out = nib.Nifti1Image(output_scan, affine=header.get_qform(), header=header)
-        maskpath = os.path.join(options["pred_folder"], f"{options['fullid']}_space-MNI152NLin2009aSym_acq-{options['experiment']}Postproc_mask.nii.gz")
+        maskpath = os.path.join(
+            options["pred_folder"],
+            f"{options['fullid']}_space-MNI152NLin2009aSym_acq-{options['experiment']}Postproc_mask.nii.gz",
+        )
         nii_out.to_filename(maskpath)
         labels_out = nib.Nifti1Image(
             labels_scan, affine=header.get_qform(), header=header
         )
-        labelpath = os.path.join(options["pred_folder"], f"{options['fullid']}_space-MNI152NLin2009aSym_acq-{options['experiment']}Postproc_label.nii.gz")
+        labelpath = os.path.join(
+            options["pred_folder"],
+            f"{options['fullid']}_space-MNI152NLin2009aSym_acq-{options['experiment']}Postproc_label.nii.gz",
+        )
         labels_out.to_filename(labelpath)
     return maskpath, labelpath, count
 

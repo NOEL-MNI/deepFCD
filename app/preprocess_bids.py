@@ -1,5 +1,6 @@
 import os
 from argparse import ArgumentDefaultsHelpFormatter, ArgumentParser
+from posixpath import isabs
 
 import psutil
 import torch
@@ -19,9 +20,15 @@ def preprocess_image(id_, t1_fname, t2_fname, indir_,outdir_, preprocess, use_gp
     # tmpdir = os.path.join(outdir, id_, "tmp")
 
     # os.makedirs(tmpdir,exist_ok=True)
-
-    t1 = os.path.join(indir_, id_, "anat", t1_fname)
-    t2 = os.path.join(indir_, id_, "anat", t2_fname)
+    if not os.path.isabs(t1_fname):
+        t1 = os.path.join(indir_, id_, "anat", t1_fname)
+    else:
+        t1 = t1_fname
+        
+    if not os.path.isabs(t2_fname):
+        t2 = os.path.join(indir_, id_, "anat", t2_fname)
+    else:
+        t2 = t2_fname
     args = to_data({})  # this is really dumb but the code needs it...
     args.seed = 666
 
