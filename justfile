@@ -7,7 +7,10 @@ TAG := "latest"
 UID := "2551"
 GID := "618"
 CASE_ID := "PLO_JUL"
-TMPDIR := "/host/hamlet/local_raid/data/ravnoor/sandbox"
+T1_IMAGE := "T1.nii.gz"
+FLAIR_IMAGE := "FLAIR.nii.gz"
+GPU_ARGS := "all"
+TMPDIR := "/host/hamlet/local_raid/data/ravnoor/sandbox/deepFCD"
 PRED_DIR := "/host/hamlet/local_raid/data/ravnoor/sandbox/pytests"
 BRAIN_MASKING := "1"
 PREPROCESS := "1"
@@ -28,11 +31,11 @@ install-pyenv: create-locked-pyenv
 
 # run test pipeline
 test-pipeline:
-    ./app/inference.py {{CASE_ID}} T1.nii.gz FLAIR.nii.gz {{TMPDIR}} cuda0 {{BRAIN_MASKING}} {{PREPROCESS}}
+    ./app/inference.py {{CASE_ID}} {{T1_IMAGE}} {{FLAIR_IMAGE}} {{TMPDIR}} cuda0 {{BRAIN_MASKING}} {{PREPROCESS}}
 
 # run scalene profiling
 scalene-profiling:
-    python3 -m scalene --cpu --gpu --memory ./app/inference.py {{CASE_ID}} T1.nii.gz FLAIR.nii.gz {{TMPDIR}} cuda0 1 1
+    python3 -m scalene --cpu --gpu --memory ./app/inference.py {{CASE_ID}} {{T1_IMAGE}} {{FLAIR_IMAGE}} {{TMPDIR}} cuda0 1 1
 
 # run memray profiling
 memray-profiling:
@@ -44,16 +47,16 @@ memray-profiling-cpu:
 
 # test preprocessing
 test-preprocess:
-    ./app/preprocess.sh {{CASE_ID}} t1.nii.gz flair.nii.gz {{TMPDIR}} {{BRAIN_MASKING}} {{PREPROCESS}}
+    ./app/preprocess.sh {{CASE_ID}} {{T1_IMAGE}} {{FLAIR_IMAGE}} {{TMPDIR}} {{BRAIN_MASKING}} {{PREPROCESS}}
 
 # test pipeline in Docker
 test-pipeline-docker:
     docker run --rm -it --init \
-    --gpus=all \
+    --gpus={{GPU_ARGS}} \
     --user="{{UID}}:{{GID}}" \
     --volume="{{TMPDIR}}:/tmp" \
     {{ACCOUNT}}/{{SERVICE}}:{{TAG}} \
-    /app/inference.py {{CASE_ID}} T1.nii.gz FLAIR.nii.gz /tmp cuda0 {{BRAIN_MASKING}} {{PREPROCESS}}
+    /app/inference.py {{CASE_ID}} {{T1_IMAGE}} {{FLAIR_IMAGE}} /tmp cuda0 {{BRAIN_MASKING}} {{PREPROCESS}}
 
 # test pipeline in Docker with CI testing
 test-pipeline-docker_ci:
@@ -64,7 +67,7 @@ test-pipeline-docker_ci:
     --env CI_TESTING=1 \
     --env CI_TESTING_GT=/tmp/{{CASE_ID}}/label_final_MD.nii.gz \
     {{ACCOUNT}}/{{SERVICE}}:{{TAG}} \
-    /app/inference.py {{CASE_ID}} T1.nii.gz FLAIR.nii.gz /tmp cuda0 {{BRAIN_MASKING}} {{PREPROCESS}}
+    /app/inference.py {{CASE_ID}} {{T1_IMAGE}} {{FLAIR_IMAGE}} /tmp cuda0 {{BRAIN_MASKING}} {{PREPROCESS}}
 
 # test pipeline in Docker for testing
 test-pipeline-docker_testing:
