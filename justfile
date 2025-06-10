@@ -7,6 +7,7 @@ TAG := "latest"
 UID := "2551"
 GID := "618"
 CASE_ID := "PLO_JUL"
+TEST_CASE_ID := "sub-00055"
 T1_IMAGE := "T1.nii.gz"
 FLAIR_IMAGE := "FLAIR.nii.gz"
 GPU_ARGS := "all"
@@ -59,27 +60,37 @@ test-pipeline-docker:
     /app/inference.py {{CASE_ID}} {{T1_IMAGE}} {{FLAIR_IMAGE}} /tmp cuda0 {{BRAIN_MASKING}} {{PREPROCESS}}
 
 # test pipeline in Docker with CI testing
-test-pipeline-docker_ci:
+test-pipeline-docker_ci CASE_ID="sub-00055":
     docker run --rm -it --init \
-    --gpus=all \
-    --user="{{UID}}:{{GID}}" \
-    --volume="{{TMPDIR}}:/tmp" \
-    --env CI_TESTING=1 \
-    --env CI_TESTING_GT=/tmp/{{CASE_ID}}/label_final_MD.nii.gz \
-    {{ACCOUNT}}/{{SERVICE}}:{{TAG}} \
-    /app/inference.py {{CASE_ID}} {{T1_IMAGE}} {{FLAIR_IMAGE}} /tmp cuda0 {{BRAIN_MASKING}} {{PREPROCESS}}
+        --gpus=all \
+        --user="{{UID}}:{{GID}}" \
+        --volume="{{PRED_DIR}}:/tmp" \
+        --env CI_TESTING=1 \
+        --env CI_TESTING_PATIENT_ID="{{CASE_ID}}" \
+        --env CI_TESTING_GT="/tests/segmentations/{{CASE_ID}}/{{CASE_ID}}_label_dilated_final.nii.gz" \
+        --env CI_TESTING_PRED_DIR=/tmp \
+        {{ACCOUNT}}/{{SERVICE}}:{{TAG}} \
+        /app/inference.py {{CASE_ID}} t1.nii.gz flair.nii.gz /tmp cuda0 {{BRAIN_MASKING}} {{PREPROCESS}}
+    just test-pipeline-docker_testing {{CASE_ID}}
 
 # test pipeline in Docker for testing
-test-pipeline-docker_testing:
+test-pipeline-docker_testing CASE_ID="sub-00055":
     docker run --rm -it --init \
-    --gpus=all \
-    --user="{{UID}}:{{GID}}" \
-    --volume="{{PRED_DIR}}:/tmp" \
-    --env CI_TESTING=1 \
-    --env CI_TESTING_PATIENT_ID={{CASE_ID}} \
-    --env CI_TESTING_PRED_DIR=/tmp \
-    {{ACCOUNT}}/{{SERVICE}}:{{TAG}} \
-    bash /tests/run_tests.sh
+        --gpus=all \
+        --user="{{UID}}:{{GID}}" \
+        --volume="{{PRED_DIR}}:/tmp" \
+        --env CI_TESTING=1 \
+        --env CI_TESTING_PATIENT_ID={{CASE_ID}} \
+        --env CI_TESTING_PRED_DIR=/tmp \
+        {{ACCOUNT}}/{{SERVICE}}:{{TAG}} \
+        bash /tests/run_tests.sh
+
+# test pipeline natively for testing
+test-pipeline-native_testing CASE_ID="sub-00055":
+    CI_TESTING=1 \
+    CI_TESTING_PATIENT_ID={{CASE_ID}} \
+    CI_TESTING_PRED_DIR={{PRED_DIR}} \
+    bash ./tests/run_tests.sh
 
 # test reporting
 test-reporting:
@@ -108,7 +119,7 @@ prune:
 
 # build runner
 runner-build:
-    docker-compose -f ci/runner.docker-compose.yml build
+    DOCKER_BUILDKIT=1 docker-compose -f ci/runner.docker-compose.yml build
 
 # show runner processes
 runner-ps:
