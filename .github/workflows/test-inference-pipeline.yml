@@ -1,4 +1,3 @@
-
 name: Testing Inference Pipeline
 
 on: [push, pull_request]
@@ -8,7 +7,6 @@ env:
 
 jobs:
   build:
-
     runs-on: self-hosted
 
     steps:
@@ -35,9 +33,9 @@ jobs:
           BASE_URL=https://s3.amazonaws.com/openneuro.org/ds004199/${PATIENT_ID}/anat
           mkdir -p ~/io/${PATIENT_ID}
           echo "retrieving single-patient multimodal dataset.."
-          wget ${BASE_URL}/${PATIENT_ID}_acq-sag111_T1w.nii.gz\?versionId\=IKGWDiLR7B7ls2yPVyycJo.6R1Sqhujf -O ~/io/sub-00055/t1.nii.gz
-          wget ${BASE_URL}/${PATIENT_ID}_acq-tse3dvfl_FLAIR.nii.gz\?versionId\=HmzYoUuYkdbyd8jkpdJjVkZydRHNSqUX -O ~/io/sub-00055/flair.nii.gz
-          wget ${BASE_URL}/${PATIENT_ID}_acq-tse3dvfl_FLAIR_roi.nii.gz\?versionId\=ulmEU3nb8WCvGwcwTbkcdNSVr07PMPQN -O ~/io/sub-00055/label.nii.gz
+          curl -o ~/io/sub-00055/t1.nii.gz "${BASE_URL}/${PATIENT_ID}_acq-sag111_T1w.nii.gz?versionId=IKGWDiLR7B7ls2yPVyycJo.6R1Sqhujf"
+          curl -o ~/io/sub-00055/flair.nii.gz "${BASE_URL}/${PATIENT_ID}_acq-tse3dvfl_FLAIR.nii.gz?versionId=HmzYoUuYkdbyd8jkpdJjVkZydRHNSqUX"
+          curl -o ~/io/sub-00055/label.nii.gz "${BASE_URL}/${PATIENT_ID}_acq-tse3dvfl_FLAIR_roi.nii.gz?versionId=ulmEU3nb8WCvGwcwTbkcdNSVr07PMPQN"
 
       - name: Run inference for deepFCD
         run: |
@@ -48,7 +46,7 @@ jobs:
           CI_TESTING_PATIENT_ID: "sub-00055"
           CI_TESTING_GT: "./tests/segmentations/sub-00055/sub-00055_label_dilated_final.nii.gz"
           CI_TESTING_PRED_DIR: "/home/ga/io"
-          
+
       - name: Run tests to compare outputs with previous validated runs
         run: |
           eval "$(micromamba shell hook -s posix)"
