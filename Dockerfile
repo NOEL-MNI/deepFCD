@@ -1,4 +1,4 @@
-FROM nvidia/cuda:11.8.0-cudnn8-devel-ubuntu22.04
+FROM nvidia/cuda:12.2.2-cudnn8-devel-ubuntu22.04
 LABEL maintainer="Ravnoor Singh Gill <ravnoor@gmail.com>" \
         org.opencontainers.image.title="deepFCD" \
         org.opencontainers.image.description="Automated Detection of Focal Cortical Dysplasia using Deep Learning" \
