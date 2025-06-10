@@ -1,4 +1,5 @@
-FROM nvidia/cuda:11.8.0-cudnn8-devel-ubuntu22.04
+ARG BASE_IMAGE_TAG=11.8.0-cudnn8-devel-ubuntu22.04
+FROM nvidia/cuda:${BASE_IMAGE_TAG}
 
 LABEL maintainer="Ravnoor Singh Gill <ravnoor@gmail.com>" \
         org.opencontainers.image.title="Self-hosted Github Actions runner for deepFCD" \
