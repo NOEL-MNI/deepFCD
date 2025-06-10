@@ -11,13 +11,15 @@ LABEL maintainer="Ravnoor Singh Gill <ravnoor@gmail.com>" \
 ENV DEBIAN_FRONTEND=noninteractive
 RUN apt-get update -y
 RUN apt-get install -y --no-install-recommends \
-    bash build-essential curl jq libssl-dev libffi-dev \
-    nano python3-dev software-properties-common unzip wget
-
-# install git 2.17+
-RUN add-apt-repository ppa:git-core/candidate -y
-RUN apt-get update
-RUN apt-get install -y git
+    bash \
+    build-essential \
+    curl \
+    git \
+    jq \
+    libffi-dev \
+    libssl-dev \
+    nano \
+    unzip
 
 # github actions needs a non-root to run
 RUN useradd -m ga 
@@ -38,7 +40,7 @@ RUN chmod +x start.sh
 
 # install micromamba
 ARG MAMBA_VERSION=2.0.5-0
-RUN wget -O /usr/bin/micromamba https://github.com/mamba-org/micromamba-releases/releases/download/${MAMBA_VERSION}/micromamba-linux-64 && \
+RUN curl -L -o /usr/bin/micromamba https://github.com/mamba-org/micromamba-releases/releases/download/${MAMBA_VERSION}/micromamba-linux-64 && \
     chmod +x /usr/bin/micromamba
 
 # set permission and user to ga
