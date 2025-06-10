@@ -1,8 +1,6 @@
-version: '3.9'
-
 services:
   runner:
-    image: noelmni/deep-fcd:runner_latest
+    image: noelmni/deep-fcd_ci:cu118-cudnn8-ubuntu22.04
     # command: '/app/inference.py FCD_001 T1.nii.gz FLAIR.nii.gz /io cuda0 1 1'
     # command: nvidia-smi
     # entrypoint: /bin/bash
@@ -10,8 +8,8 @@ services:
       context: .
       dockerfile: runner.Dockerfile
       args:
-        RUNNER_VERSION: '2.321.0'
-        MAMBA_VERSION: '2.0.5-0'
+        RUNNER_VERSION: 2.325.0
+        MAMBA_VERSION: 2.2.0-0
     deploy:
       resources:
         reservations:
