@@ -31,9 +31,10 @@ USER user
 ENV HOME=/home/user
 RUN chmod 777 /home/user
 
-RUN wget --quiet https://repo.anaconda.com/miniconda/Miniconda3-py38_23.5.2-0-Linux-x86_64.sh \
-    && /bin/bash Miniconda3-py38_23.5.2-0-Linux-x86_64.sh -b -p /home/user/conda \
-    && rm Miniconda3-py38_23.5.2-0-Linux-x86_64.sh
+ARG CONDA_VERSION=23.5.2-0
+RUN wget --quiet https://repo.anaconda.com/miniconda/Miniconda3-py38_${CONDA_VERSION}-Linux-x86_64.sh \
+    && /bin/bash Miniconda3-py38_${CONDA_VERSION}-Linux-x86_64.sh -b -p /home/user/conda \
+    && rm Miniconda3-py38_${CONDA_VERSION}-Linux-x86_64.sh
 
 # RUN conda update -n base -c defaults conda
 
