@@ -3,7 +3,7 @@ name: Test Docker image build
 on: [push, pull_request]
 
 jobs:
-  push_to_registry:
+  build_image:
     runs-on: ubuntu-latest
     steps:
       - name: Check out the repo
