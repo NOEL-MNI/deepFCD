@@ -77,9 +77,11 @@ def compare_images(predicted_image, ground_truth_image, metric_type='correlation
   # predicted_image = ants.image_read(predicted_image)
   # ground_truth_image = ants.image_read(ground_truth_image)
   if metric_type == 'correlation':
+    # correlation between two images
     metric = ants.image_similarity(predicted_image, ground_truth_image, metric_type='ANTSNeighborhoodCorrelation')
     metric = np.abs(metric)
   else:
+    # overlap measures from two label images
     metric = ants.label_overlap_measures(predicted_image, ground_truth_image).TotalOrTargetOverlap[1]
 
   return metric

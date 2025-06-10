@@ -1,14 +1,10 @@
-FROM noelmni/cuda:10.0-cudnn7-devel-ubuntu18.04
+FROM nvidia/cuda:12.2.2-cudnn8-devel-ubuntu22.04
 LABEL maintainer="Ravnoor Singh Gill <ravnoor@gmail.com>" \
         org.opencontainers.image.title="deepFCD" \
         org.opencontainers.image.description="Automated Detection of Focal Cortical Dysplasia using Deep Learning" \
         org.opencontainers.image.licenses="BSD-3-Clause" \
         org.opencontainers.image.source="https://github.com/NOEL-MNI/deepFCD" \
         org.opencontainers.image.url="https://github.com/NOEL-MNI/deepFCD"
-
-# manually update outdated repository key
-# fixes invalid GPG error: https://forums.developer.nvidia.com/t/gpg-error-http-developer-download-nvidia-com-compute-cuda-repos-ubuntu1804-x86-64/212904
-RUN apt-key adv --fetch-keys https://developer.download.nvidia.com/compute/cuda/repos/ubuntu1804/x86_64/3bf863cc.pub
 
 RUN apt-get update && apt-get upgrade -y \
     && apt-get install -y git \
@@ -35,9 +31,11 @@ USER user
 ENV HOME=/home/user
 RUN chmod 777 /home/user
 
-RUN wget --quiet https://repo.anaconda.com/miniconda/Miniconda3-py38_23.5.2-0-Linux-x86_64.sh \
-    && /bin/bash Miniconda3-py38_23.5.2-0-Linux-x86_64.sh -b -p /home/user/conda \
-    && rm Miniconda3-py38_23.5.2-0-Linux-x86_64.sh
+# specify conda version
+ARG CONDA_VERSION=py38_23.11.0-2
+RUN wget --quiet https://repo.anaconda.com/miniconda/Miniconda3-${CONDA_VERSION}-Linux-x86_64.sh \
+    && /bin/bash Miniconda3-${CONDA_VERSION}-Linux-x86_64.sh -b -p /home/user/conda \
+    && rm Miniconda3-${CONDA_VERSION}-Linux-x86_64.sh
 
 # RUN conda update -n base -c defaults conda
 
@@ -50,16 +48,21 @@ RUN eval "$(conda shell.bash hook)" \
     && python -m pip install -r deepMask/app/requirements.txt \
     && conda deactivate
 
-COPY app/requirements.txt /app/requirements.txt
+RUN eval "$(conda shell.bash hook)" \
+    && conda activate base \
+    && python -m pip install conda-lock
 
-RUN python -m pip install -r /app/requirements.txt \
-    && conda install -c conda-forge pygpu==0.7.6 \
-    && pip cache purge
+COPY app/conda-lock.yml /app/conda-lock.yml
+
+RUN eval "$(conda shell.bash hook)" \
+    && conda run --name base conda-lock install --name deepFCD /app/conda-lock.yml
 
 COPY app/ /app/
 
 COPY tests/ /tests/
 
 RUN sudo chmod -R 777 /app && sudo chmod +x /app/inference.py
+
+ENTRYPOINT ["conda", "run", "--no-capture-output", "-n", "deepFCD"]
 
 CMD ["python3"]

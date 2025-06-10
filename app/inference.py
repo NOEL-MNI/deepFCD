@@ -128,7 +128,7 @@ x_names = options["x_names"]
 # seed = options['seed']
 options["dropout_mc"] = True
 options["batch_size"] = 350000
-options["mini_batch_size"] = 2048
+options["mini_batch_size"] =  8192 # 1536 uses 3700MiB of GPU VRAM; 8192:18888MiB
 options["load_checkpoint_1"] = True
 options["load_checkpoint_2"] = True
 
@@ -137,7 +137,7 @@ options["test_folder"] = args.dir
 options["weight_paths"] = os.path.join(cwd, "weights")
 options["experiment"] = "noel_deepFCD_dropoutMC"
 logging.info("experiment: {}".format(options["experiment"]))
-spt.setproctitle(options["experiment"])
+spt.setproctitle(options["experiment"]+'_'+args.id)
 
 # --------------------------------------------------
 # initialize the CNN

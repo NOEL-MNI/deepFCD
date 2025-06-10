@@ -25,19 +25,35 @@ OUTDIR=${BASEDIR}/${ID}/        # args.outdir = os.path.join(args.dir, args.id)
 
 PWD=$(dirname "$0")
 
-conda=${CONDA_EXE}
-eval "$(conda shell.bash hook)"
-conda activate preprocess
-# echo $CONDA_PREFIX
-
-if [ ${PREPROCESSING} -eq 1 ] && [ ${USE_GPU} -eq 0 ]; then
-	python3 $PWD/preprocess.py -i ${ID} -t1 ${T1_FNAME} -t2 ${T2_FNAME} -d ${BASEDIR} --preprocess
-elif [ ${PREPROCESSING} -eq 0 ] && [ ${USE_GPU} -eq 1 ]; then	
-	python3 $PWD/preprocess.py -i ${ID} -t1 ${T1_FNAME} -t2 ${T2_FNAME} -d ${BASEDIR} --use_gpu
-elif [ ${PREPROCESSING} -eq 1 ] && [ ${USE_GPU} -eq 1 ]; then
-	python3 $PWD/preprocess.py -i ${ID} -t1 ${T1_FNAME} -t2 ${T2_FNAME} -d ${BASEDIR} --preprocess --use_gpu
+# conditional switching between conda and micromamba
+if [ -n "${MAMBA_EXE}" ] && command -v micromamba &> /dev/null; then
+    echo "Using micromamba python environment"
+    eval "$(micromamba shell hook --shell bash)"
+    CONDA_CMD="micromamba"
+    # micromamba activate preprocess
+elif [ -n "${CONDA_EXE}" ] && command -v conda &> /dev/null; then
+    echo "Using conda python environment"
+    eval "$(conda shell.bash hook)"
+    CONDA_CMD="conda"
+    # conda activate preprocess
 else
-    python3 $PWD/preprocess.py -i ${ID} -t1 ${T1_FNAME} -t2 ${T2_FNAME} -d ${BASEDIR}
+    echo "Error: Neither conda nor micromamba found"
+    exit 1
 fi
 
-conda deactivate
+if [ ${PREPROCESSING} -eq 1 ] && [ ${USE_GPU} -eq 0 ]; then
+  ${CONDA_CMD} run -n preprocess python3 $PWD/preprocess.py -i ${ID} -t1 ${T1_FNAME} -t2 ${T2_FNAME} -d ${BASEDIR} --preprocess
+elif [ ${PREPROCESSING} -eq 0 ] && [ ${USE_GPU} -eq 1 ]; then	
+  ${CONDA_CMD} run -n preprocess python3 $PWD/preprocess.py -i ${ID} -t1 ${T1_FNAME} -t2 ${T2_FNAME} -d ${BASEDIR} --use_gpu
+elif [ ${PREPROCESSING} -eq 1 ] && [ ${USE_GPU} -eq 1 ]; then
+  ${CONDA_CMD} run -n preprocess python3 $PWD/preprocess.py -i ${ID} -t1 ${T1_FNAME} -t2 ${T2_FNAME} -d ${BASEDIR} --preprocess --use_gpu
+else
+  ${CONDA_CMD} run -n preprocess python3 $PWD/preprocess.py -i ${ID} -t1 ${T1_FNAME} -t2 ${T2_FNAME} -d ${BASEDIR}
+fi
+
+# deactivate environment (works for both conda and micromamba)
+# if command -v micromamba &> /dev/null; then
+#     micromamba deactivate
+# else
+#     conda deactivate
+# fi
