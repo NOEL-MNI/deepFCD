@@ -1,3 +1,4 @@
+# %%
 import json
 import os
 import time
@@ -8,8 +9,11 @@ import h5py
 import nibabel as nib
 import numpy as np
 import pandas as pd
-from keras.callbacks import (CSVLogger, EarlyStopping, LambdaCallback,
-                             ModelCheckpoint)
+
+from bids import BIDSLayout
+
+# %%
+from keras.callbacks import CSVLogger, EarlyStopping, LambdaCallback, ModelCheckpoint
 from keras.models import load_model
 from keras.utils.io_utils import HDF5Matrix
 from keras.utils.np_utils import to_categorical
@@ -18,8 +22,10 @@ from sklearn.model_selection import LeaveOneGroupOut
 
 from utils.patch_dataloader import *
 from utils.post_processor import *
+import re
 
 
+# %%
 def print_data_shape(X):
     """ Print shape of the training data
 
@@ -381,190 +387,39 @@ def train_model(model, train_x_data, train_y_data, options):
     return model
 
 
-def test_model(
-    model,
-    test_x_data,
-    options,
-    performance=False,
-    uncertainty=True,
-    transforms=None,
-    orig_files=None,
-    invert_xfrm=True,
-):
-    threshold = options["th_dnn_train_2"]
-    scan = options["test_scan"] + "_"
-    # organize experiments
-    # first network
-    options["test_name"] = scan + options["experiment"] + "_prob_0.nii.gz"
-    options["test_mean_name"] = scan + options["experiment"] + "_prob_mean_0.nii.gz"
-    options["test_var_name"] = scan + options["experiment"] + "_prob_var_0.nii.gz"
-
-    if uncertainty:
-        pred_mean_0, pred_var_0, header = test_scan(
-            model[0],
-            test_x_data,
-            options,
-            save_nifti=True,
-            uncertainty=uncertainty,
-            T=20,
-        )
-        pred_var_0_img = nifti2ants(
-            pred_var_0, affine=header.get_qform(), header=header
-        )
-    else:
-        pred_mean_0, header = test_scan(
-            model[0],
-            test_x_data,
-            options,
-            save_nifti=True,
-            uncertainty=uncertainty,
-            T=20,
-        )
-
-    pred_mean_0_img = nifti2ants(pred_mean_0, affine=header.get_qform(), header=header)
-
-    if isinstance(transforms, dict):
-        apply_transforms(
-            pred_mean_0_img,
-            pred_var_0_img,
-            transforms,
-            orig_files,
-            invert_xfrm,
-            options,
-            uncertainty,
-        )
-
-    # second network
-    options["test_name"] = scan + options["experiment"] + "_prob_1.nii.gz"
-    options["test_mean_name"] = scan + options["experiment"] + "_prob_mean_1.nii.gz"
-    options["test_var_name"] = scan + options["experiment"] + "_prob_var_1.nii.gz"
-
-    if uncertainty:
-        pred_mean_1, pred_var_1, header = test_scan(
-            model[1],
-            test_x_data,
-            options,
-            save_nifti=True,
-            uncertainty=uncertainty,
-            T=50,
-            candidate_mask=pred_mean_0 > threshold,
-        )
-        pred_var_1_img = nifti2ants(
-            pred_var_1, affine=header.get_qform(), header=header
-        )
-    else:
-        pred_mean_1, header = test_scan(
-            model[1],
-            test_x_data,
-            options,
-            save_nifti=True,
-            uncertainty=uncertainty,
-            T=50,
-            candidate_mask=pred_mean_0 > threshold,
-        )
-
-    pred_mean_1_img = nifti2ants(pred_mean_1, affine=header.get_qform(), header=header)
-
-    if isinstance(transforms, dict):
-        apply_transforms(
-            pred_mean_1_img,
-            pred_var_1_img,
-            transforms,
-            orig_files,
-            invert_xfrm,
-            options,
-            uncertainty,
-        )
-
-    if performance:
-        # postprocess the output segmentation
-        options["test_name"] = options["experiment"] + "_out_CNN.nii.gz"
-        out_segmentation, lpred, count = post_processing(
-            pred_mean_1, options, header, save_nifti=True
-        )
-        outputs = [pred_mean_0, pred_mean_1, out_segmentation, lpred, count]
-    else:
-        outputs = [pred_mean_0, pred_mean_1]
-    return outputs
-
-
 def nifti2ants(input_np, affine, header):
     nifti = nib.Nifti1Image(input_np, affine=affine, header=header)
     output_ants = ants.convert_nibabel.from_nibabel(nifti)
     return output_ants
 
 
-def apply_transforms(
-    pred_mean_img,
-    pred_var_img,
-    transforms,
-    orig_files,
-    invert_xfrm,
-    options,
-    uncertainty,
+def transform_img(
+    bidsfilepath,
+    bidsfileentities,
+    origfilepath,
+    transformpath,
+    targetspace=None,
+    invert=False,
+    interpolation="nearestneighbor",
 ):
-    print("writing data transformed to the appropriate sterotaxic space")
-    for m, t in transforms[options["test_scan"]].items():
-        xfrm = ants.read_transform(t)
-        if invert_xfrm:
-            xfrm = xfrm.invert()
-        if uncertainty:
-            pred_var_xfmd = ants.apply_ants_transform_to_image(
-                transform=xfrm,
-                image=pred_var_img,
-                reference=ants.image_read(orig_files[m]),
-                interpolation="nearestneighbor",
-            )
-            pred_var_xfmd.to_filename(
-                os.path.join(
-                    options["pred_folder"],
-                    options["test_var_name"].replace(
-                        ".nii.gz", "_native-" + m + ".nii.gz"
-                    ),
-                )
-            )
-            # pred_var_xfmd = ants.resample_image_to_target(
-            #     image=pred_var_xfmd,
-            #     target=ants.image_read(orig_files[m]),
-            #     verbose=True,
-            #     interp_type="nearestNeighbor",
-            # )
-            # pred_var_xfmd.to_filename(
-            #     os.path.join(
-            #         options["pred_folder"],
-            #         options["test_var_name"].replace(
-            #             ".nii.gz", "_native_rsl-" + m + ".nii.gz"
-            #         ),
-            #     )
-            # )
-        pred_mean_xfmd = ants.apply_ants_transform_to_image(
-            transform=xfrm,
-            image=pred_mean_img,
-            reference=ants.image_read(orig_files[m]),
-            interpolation="nearestneighbor",
-        )
-        pred_mean_xfmd.to_filename(
-            os.path.join(
-                options["pred_folder"],
-                options["test_mean_name"].replace(
-                    ".nii.gz", "_native-" + m + ".nii.gz"
-                ),
-            )
-        )
-        # pred_mean_xfmd = ants.resample_image_to_target(
-        #     image=pred_mean_xfmd,
-        #     target=ants.image_read(orig_files[m]),
-        #     verbose=True,
-        #     interp_type="nearestNeighbor",
-        # )
-        # pred_mean_xfmd.to_filename(
-        #     os.path.join(
-        #         options["pred_folder"],
-        #         options["test_mean_name"].replace(
-        #             ".nii.gz", "_native_rsl-" + m + ".nii.gz"
-        #         ),
-        #     )
-        # )
+    print(f"writing data transformed to the {targetspace} space")
+    t = ants.read_transform(transformpath)
+    if invert:
+        t = t.invert()
+
+    img = ants.image_read(bidsfilepath)
+    origimg = ants.image_read(origfilepath)
+    img_t = ants.apply_ants_transform_to_image(
+        transform=t,
+        image=img,
+        reference=origimg,
+        interpolation=interpolation,
+    )
+    if targetspace is None:
+        outname = bidsfilepath.replace(f"_space-{bidsfileentities['space']}", "")
+    else:
+        outname = bidsfilepath.replace(bidsfileentities["space"], targetspace)
+    img_t.to_filename(outname)
 
 
 def test_scan(
@@ -573,7 +428,7 @@ def test_scan(
     options,
     transit=None,
     save_nifti=False,
-    uncertainty=False,
+    uncertainty=True,  # TODO
     candidate_mask=None,
     T=20,
 ):
@@ -606,6 +461,7 @@ def test_scan(
         os.mkdir(test_folder)
 
     # compute lesion segmentation in batches of size options['batch_size']
+
     for batch, centers in load_test_patches(
         test_x_data,
         options,
@@ -629,15 +485,11 @@ def test_scan(
     if save_nifti:
         # out_scan = nib.Nifti1Image(seg_image, np.eye(4))
         out_scan = nib.Nifti1Image(seg_image, affine=affine, header=header)
-        out_scan.to_filename(
-            os.path.join(options["pred_folder"], options["test_mean_name"])
-        )
+        out_scan.to_filename(options["test_mean_name"])
 
         if uncertainty:
             out_scan = nib.Nifti1Image(var_image, affine=affine, header=header)
-            out_scan.to_filename(
-                os.path.join(options["pred_folder"], options["test_var_name"])
-            )
+            out_scan.to_filename(options["test_var_name"])
 
     if transit is not None:
         if not os.path.exists(test_folder):
@@ -660,7 +512,7 @@ def test_scan(
         test_name = str.replace(scan, "_flair.nii.gz", "") + "_out_pred_0.nii.gz"
         out_scan.to_filename(os.path.join(test_folder, test_name))
 
-    return (seg_image, var_image, header) if uncertainty else (seg_image, header)
+    return (seg_image, var_image, header) if uncertainty else (seg_image, None, header)
 
 
 def copy_most_recent_model(path, net_model):
@@ -670,3 +522,147 @@ def copy_most_recent_model(path, net_model):
     ]
     latest_model = max(paths, key=os.path.getctime)
     copyfile(latest_model, os.path.join(path, net_model) + ".h5")
+
+
+def test_model(
+    model,
+    test_x_data,
+    options,
+    performance=False,
+    uncertainty=True,
+    transforms=None,
+    orig_files=None,
+    invert_xfrm=True,
+):
+    outputs = {}
+    threshold = options["th_dnn_train_2"]
+    scan = options["test_scan"] + "_"
+
+    # scans = test_x_data.keys()
+    # flair_scans = [test_x_data[s]["FLAIR"] for s in scans]
+    # header = load_nii(flair_scans[0]).header
+
+    # organize experiments
+    # first network
+    options["test_name"] = os.path.join(
+        options["pred_folder"],
+        f"{options['fullid']}_space-MNI152NLin2009aSym_acq-{options['experiment']}0_pred.nii.gz",
+    )
+    options["test_mean_name"] = os.path.join(
+        options["pred_folder"],
+        f"{options['fullid']}_space-MNI152NLin2009aSym_acq-{options['experiment']}Mean0_pred.nii.gz",
+    )
+    options["test_var_name"] = os.path.join(
+        options["pred_folder"],
+        f"{options['fullid']}_space-MNI152NLin2009aSym_acq-{options['experiment']}Var0_pred.nii.gz",
+    )
+    pred_var_0_img = None
+    pred_var_1_img = None
+    skip = False
+
+    if os.path.isfile(options["test_mean_name"]):
+        pred_mean_0 = nib.load(options["test_mean_name"]).get_data()
+        header = nib.load(options["test_mean_name"]).header
+        skip = True
+
+    if skip and uncertainty:
+        if os.path.isfile(options["test_var_name"]):
+            pred_var_0 = nib.load(options["test_var_name"]).get_data()
+            header = nib.load(options["test_var_name"]).header
+            pred_var_0_img = nifti2ants(
+                pred_var_0,
+                affine=header.get_qform(),
+                header=header,
+            )
+        else:
+            skip = False
+
+    if not skip:
+        pred_mean_0, pred_var_0, header = test_scan(
+            model[0],
+            test_x_data,
+            options,
+            save_nifti=True,
+            uncertainty=uncertainty,
+            T=20,
+        )
+
+        pred_var_0_img = nifti2ants(
+            pred_var_0, affine=header.get_qform(), header=header
+        )
+
+    # pred_mean_0_img = nifti2ants(pred_mean_0, affine=None, header=header)
+    outputs["pred_mean_0_path"] = options["test_mean_name"]
+
+    if pred_var_0_img is not None:
+        outputs["pred_var_0_path"] = options["test_var_name"]
+
+    # pred_mean_0_img = nifti2ants(pred_mean_0, affine=header.get_qform(), header=header)
+
+    # second network
+    options["test_name"] = os.path.join(
+        options["pred_folder"],
+        f"{options['fullid']}_space-MNI152NLin2009aSym_acq-{options['experiment']}1_pred.nii.gz",
+    )
+    options["test_mean_name"] = os.path.join(
+        options["pred_folder"],
+        f"{options['fullid']}_space-MNI152NLin2009aSym_acq-{options['experiment']}Mean1_pred.nii.gz",
+    )
+    options["test_var_name"] = os.path.join(
+        options["pred_folder"],
+        f"{options['fullid']}_space-MNI152NLin2009aSym_acq-{options['experiment']}Var1_pred.nii.gz",
+    )
+
+    skip = False
+
+    if os.path.isfile(options["test_mean_name"]):
+        pred_mean_1 = nib.load(options["test_mean_name"]).get_data()
+        skip = True
+
+    if skip and uncertainty:
+        if os.path.isfile(options["test_var_name"]):
+            pred_var_1 = nib.load(options["test_var_name"]).get_data()
+            header = nib.load(options["test_var_name"]).header
+            pred_var_1_img = nifti2ants(
+                pred_var_1,
+                affine=None,
+                header=header,
+            )
+        else:
+            skip = False
+
+    if not skip:
+        pred_mean_1, pred_var_1, header = test_scan(
+            model[1],
+            test_x_data,
+            options,
+            save_nifti=True,
+            uncertainty=uncertainty,
+            T=50,
+            candidate_mask=pred_mean_0 > threshold,
+        )
+
+        pred_var_1_img = nifti2ants(pred_var_1, affine=None, header=header)
+
+    # pred_mean_1_img = nifti2ants(pred_mean_1, affine=header.get_qform(), header=header)
+    # pred_mean_1_img = nifti2ants(pred_mean_1, affine=None, header=header)
+    # outputs['pred_mean_1_img'] = pred_mean_1_img
+    outputs["pred_mean_1_path"] = options["test_mean_name"]
+
+    if pred_var_1_img is not None:
+        outputs["pred_var_1_path"] = options["test_var_name"]
+
+    if performance:
+        # postprocess the output segmentation
+        print("postprocessing")
+        # options["test_name"] = options["experiment"] + "_out_CNN.nii.gz"
+        maskpath, labelpath, _ = post_processing(
+            pred_mean_1, options, header, save_nifti=True
+        )
+
+        outputs["mask_path"] = maskpath
+        outputs["label_path"] = labelpath
+
+        # outputs = [pred_mean_0, pred_var_0, pred_mean_1, pred_var_0 out_segmentation, lpred, count]
+
+    return outputs
