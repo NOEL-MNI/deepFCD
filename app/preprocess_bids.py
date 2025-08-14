@@ -7,14 +7,21 @@ import torch
 from mo_dots import to_data
 
 import deepMask.app.vnet as vnet
-from deepMask.app.utils.data import *
-from deepMask.app.utils.deepmask import *
+# from deepMask.app.utils.data import *
+# from deepMask.app.utils.deepmask import *
 from deepMask.app.utils.image_processing import noelImageProcessor
 
 
-def preprocess_image(id_, t1_fname, t2_fname, indir_,outdir_, preprocess, use_gpu):
+def preprocess_image(id_, t1_fname, t2_fname, indir_, outdir_, preprocess, use_gpu):
     # set up parameters
-    outdir = os.path.join(outdir_, id_,'preproc')
+    # Parse subject and session from id_ to create proper BIDS structure
+    if '_ses-' in id_:
+        # Split subject and session: sub-PX034_ses-02 -> sub-PX034, ses-02
+        subject_part, session_part = id_.split('_ses-', 1)
+        outdir = os.path.join(outdir_, subject_part, f'ses-{session_part}', 'preproc')
+    else:
+        # No session: sub-PX034 -> sub-PX034/preproc
+        outdir = os.path.join(outdir_, id_, 'preproc')
     os.makedirs(outdir, exist_ok=True)
     
     # tmpdir = os.path.join(outdir, id_, "tmp")

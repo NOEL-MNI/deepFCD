@@ -10,7 +10,12 @@ import nibabel as nib
 import numpy as np
 import pandas as pd
 
-from bids import BIDSLayout
+# Import BIDS metadata utilities
+try:
+    from bids_metadata import generate_inference_bids_metadata
+except ImportError:
+    print("Warning: Could not import BIDS metadata utilities for inference. Metadata generation will be skipped.")
+    generate_inference_bids_metadata = None
 
 # %%
 from keras.callbacks import CSVLogger, EarlyStopping, LambdaCallback, ModelCheckpoint
@@ -490,6 +495,9 @@ def test_scan(
         if uncertainty:
             out_scan = nib.Nifti1Image(var_image, affine=affine, header=header)
             out_scan.to_filename(options["test_var_name"])
+            
+        # Generate BIDS metadata for inference outputs
+        generate_inference_bids_metadata(options, uncertainty)
 
     if transit is not None:
         if not os.path.exists(test_folder):
@@ -542,19 +550,22 @@ def test_model(
     # flair_scans = [test_x_data[s]["FLAIR"] for s in scans]
     # header = load_nii(flair_scans[0]).header
 
+    if not options["pipeline"]:
+        options["pipeline"] = options["experiment"]
+
     # organize experiments
     # first network
     options["test_name"] = os.path.join(
         options["pred_folder"],
-        f"{options['fullid']}_space-MNI152NLin2009aSym_acq-{options['experiment']}0_pred.nii.gz",
+        f"{options['fullid']}_space-{options['MNI152space']}_label-{options['pipeline']}0_pred.nii.gz",
     )
     options["test_mean_name"] = os.path.join(
         options["pred_folder"],
-        f"{options['fullid']}_space-MNI152NLin2009aSym_acq-{options['experiment']}Mean0_pred.nii.gz",
+        f"{options['fullid']}_space-{options['MNI152space']}_label-{options['pipeline']}Mean0_probseg.nii.gz",
     )
     options["test_var_name"] = os.path.join(
         options["pred_folder"],
-        f"{options['fullid']}_space-MNI152NLin2009aSym_acq-{options['experiment']}Var0_pred.nii.gz",
+        f"{options['fullid']}_space-{options['MNI152space']}_label-{options['pipeline']}Var0_probseg.nii.gz",
     )
     pred_var_0_img = None
     pred_var_1_img = None
@@ -602,15 +613,15 @@ def test_model(
     # second network
     options["test_name"] = os.path.join(
         options["pred_folder"],
-        f"{options['fullid']}_space-MNI152NLin2009aSym_acq-{options['experiment']}1_pred.nii.gz",
+        f"{options['fullid']}_space-{options['MNI152space']}_label-{options['experiment']}1_probseg.nii.gz",
     )
     options["test_mean_name"] = os.path.join(
         options["pred_folder"],
-        f"{options['fullid']}_space-MNI152NLin2009aSym_acq-{options['experiment']}Mean1_pred.nii.gz",
+        f"{options['fullid']}_space-{options['MNI152space']}_label-{options['experiment']}Mean1_probseg.nii.gz",
     )
     options["test_var_name"] = os.path.join(
         options["pred_folder"],
-        f"{options['fullid']}_space-MNI152NLin2009aSym_acq-{options['experiment']}Var1_pred.nii.gz",
+        f"{options['fullid']}_space-{options['MNI152space']}_label-{options['experiment']}Var1_probseg.nii.gz",
     )
 
     skip = False
