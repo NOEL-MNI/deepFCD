@@ -45,7 +45,7 @@ jobs:
 
       - name: Run inference for deepFCD
         run: |
-          conda run --name deepFCD ./app/inference.py ${CI_TESTING_PATIENT_ID} t1.nii.gz flair.nii.gz ~/io cuda 1 1
+          conda run --no-capture-output --name deepFCD ./app/inference.py ${CI_TESTING_PATIENT_ID} t1.nii.gz flair.nii.gz ~/io cuda 1 1
         env:
           CI_TESTING_PATIENT_ID: "sub-00055"
           CI_TESTING_GT: "./tests/segmentations/sub-00055/sub-00055_label_dilated_final.nii.gz"
