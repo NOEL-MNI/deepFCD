@@ -1,6 +1,6 @@
 services:
   runner:
-    image: noelmni/deep-fcd:runner_latest
+    image: noelmni/deep-fcd_ci:cu122-ubuntu22.04-miniforge
     # command: '/app/inference.py FCD_001 T1.nii.gz FLAIR.nii.gz /io cuda0 1 1'
     # command: nvidia-smi
     # entrypoint: /bin/bash
@@ -8,15 +8,15 @@ services:
       context: .
       dockerfile: runner.Dockerfile
       args:
-        RUNNER_VERSION: '2.309.0'
-        NVM_VERSION: '0.39.5'
+        BASE_IMAGE_TAG: 12.2.2-cudnn8-devel-ubuntu22.04
+        RUNNER_VERSION: '2.328.0'
     deploy:
       resources:
         reservations:
           devices:
             - driver: nvidia
               # count: 1
-              device_ids: ['1']
+              device_ids: ['0']
               capabilities: [gpu,compute,video]
     # volumes:
         # - '$PWD/io:/io'

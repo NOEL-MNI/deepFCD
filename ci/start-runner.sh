@@ -21,7 +21,7 @@ cleanup() {
     ./config.sh remove --unattended --token ${REG_TOKEN}
 }
 
-export PATH=/home/ga/miniconda3/condabin:/home/ga/miniconda3/bin:$PATH
+export PATH=/home/ga/conda/bin:$PATH
 
 trap 'cleanup; exit 130' INT
 trap 'cleanup; exit 143' TERM
