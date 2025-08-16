@@ -39,9 +39,9 @@ jobs:
           BASE_URL=https://s3.amazonaws.com/openneuro.org/ds004199/${PATIENT_ID}/anat
           mkdir -p ~/io/${PATIENT_ID}
           echo "retrieving single-patient multimodal dataset.."
-          wget ${BASE_URL}/${PATIENT_ID}_acq-sag111_T1w.nii.gz\?versionId\=IKGWDiLR7B7ls2yPVyycJo.6R1Sqhujf -O ~/io/sub-00055/t1.nii.gz
-          wget ${BASE_URL}/${PATIENT_ID}_acq-tse3dvfl_FLAIR.nii.gz\?versionId\=HmzYoUuYkdbyd8jkpdJjVkZydRHNSqUX -O ~/io/sub-00055/flair.nii.gz
-          wget ${BASE_URL}/${PATIENT_ID}_acq-tse3dvfl_FLAIR_roi.nii.gz\?versionId\=ulmEU3nb8WCvGwcwTbkcdNSVr07PMPQN -O ~/io/sub-00055/label.nii.gz
+          curl -L "${BASE_URL}/${PATIENT_ID}_acq-sag111_T1w.nii.gz?versionId=IKGWDiLR7B7ls2yPVyycJo.6R1Sqhujf" -o ~/io/sub-00055/t1.nii.gz
+          curl -L "${BASE_URL}/${PATIENT_ID}_acq-tse3dvfl_FLAIR.nii.gz?versionId=HmzYoUuYkdbyd8jkpdJjVkZydRHNSqUX" -o ~/io/sub-00055/flair.nii.gz
+          curl -L "${BASE_URL}/${PATIENT_ID}_acq-tse3dvfl_FLAIR_roi.nii.gz?versionId=ulmEU3nb8WCvGwcwTbkcdNSVr07PMPQN" -o ~/io/sub-00055/label.nii.gz
 
       - name: Run inference for deepFCD
         run: |
