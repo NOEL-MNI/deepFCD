@@ -13,23 +13,25 @@ jobs:
 
     steps:
       - name: Check out the repo
-        uses: actions/checkout@v3
+        uses: actions/checkout@v5
         with:
           submodules: recursive
 
       - name: Install dependencies for deepMask
         run: |
           eval "$(conda shell.bash hook)"
-          conda create -n preprocess python=3.8
+          conda create --name preprocess python=3.8
           conda activate preprocess
           python -m pip install -r ./app/deepMask/app/requirements.txt
           conda deactivate
 
       - name: Install dependencies for deepFCD
         run: |
+          eval "$(conda shell.bash hook)"
+          conda create --name deepFCD -c conda-forge python=3.8.20 pygpu==0.7.6
+          conda activate deepFCD
           python -m pip install -r ./app/requirements.txt
-          conda install -c conda-forge pygpu==0.7.6
-          pip cache purge
+          conda deactivate
 
       - name: Download openneuro.org dataset to test the inference pipeline # https://openneuro.org/datasets/ds004199/versions/1.0.5
         run: |
@@ -37,20 +39,22 @@ jobs:
           BASE_URL=https://s3.amazonaws.com/openneuro.org/ds004199/${PATIENT_ID}/anat
           mkdir -p ~/io/${PATIENT_ID}
           echo "retrieving single-patient multimodal dataset.."
-          wget ${BASE_URL}/${PATIENT_ID}_acq-sag111_T1w.nii.gz\?versionId\=IKGWDiLR7B7ls2yPVyycJo.6R1Sqhujf -O ~/io/sub-00055/t1.nii.gz
-          wget ${BASE_URL}/${PATIENT_ID}_acq-tse3dvfl_FLAIR.nii.gz\?versionId\=HmzYoUuYkdbyd8jkpdJjVkZydRHNSqUX -O ~/io/sub-00055/flair.nii.gz
-          wget ${BASE_URL}/${PATIENT_ID}_acq-tse3dvfl_FLAIR_roi.nii.gz\?versionId\=ulmEU3nb8WCvGwcwTbkcdNSVr07PMPQN -O ~/io/sub-00055/label.nii.gz
+          curl -L "${BASE_URL}/${PATIENT_ID}_acq-sag111_T1w.nii.gz?versionId=IKGWDiLR7B7ls2yPVyycJo.6R1Sqhujf" -o ~/io/sub-00055/t1.nii.gz
+          curl -L "${BASE_URL}/${PATIENT_ID}_acq-tse3dvfl_FLAIR.nii.gz?versionId=HmzYoUuYkdbyd8jkpdJjVkZydRHNSqUX" -o ~/io/sub-00055/flair.nii.gz
+          curl -L "${BASE_URL}/${PATIENT_ID}_acq-tse3dvfl_FLAIR_roi.nii.gz?versionId=ulmEU3nb8WCvGwcwTbkcdNSVr07PMPQN" -o ~/io/sub-00055/label.nii.gz
 
       - name: Run inference for deepFCD
         run: |
-          ./app/inference.py ${CI_TESTING_PATIENT_ID} t1.nii.gz flair.nii.gz ~/io cuda 1 1
+          conda run --no-capture-output --name deepFCD ./app/inference.py ${CI_TESTING_PATIENT_ID} t1.nii.gz flair.nii.gz ~/io cuda 1 1
         env:
           CI_TESTING_PATIENT_ID: "sub-00055"
           CI_TESTING_GT: "./tests/segmentations/sub-00055/sub-00055_label_dilated_final.nii.gz"
           CI_TESTING_PRED_DIR: "/home/ga/io"
           
       - name: Run tests to compare outputs with previous validated runs
-        run: bash ./tests/run_tests.sh
+        run: |
+          chmod +x ./tests/run_tests.sh
+          conda run --no-capture-output --name deepFCD ./tests/run_tests.sh
         env:
           CI_TESTING_PATIENT_ID: "sub-00055"
           CI_TESTING_PRED_DIR: "/home/ga/io"
