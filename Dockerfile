@@ -32,13 +32,11 @@ USER user
 ENV HOME=/home/user
 RUN chmod 777 /home/user
 
-# specify conda version
-ARG CONDA_VERSION=py38_23.11.0-2
-RUN wget --quiet https://repo.anaconda.com/miniconda/Miniconda3-${CONDA_VERSION}-Linux-x86_64.sh \
-    && /bin/bash Miniconda3-${CONDA_VERSION}-Linux-x86_64.sh -b -p /home/user/conda \
-    && rm Miniconda3-${CONDA_VERSION}-Linux-x86_64.sh
-
-# RUN conda update -n base -c defaults conda
+# specify miniforge version
+ARG MINIFORGE_VERSION=25.3.1-0
+RUN wget https://github.com/conda-forge/miniforge/releases/download/${MINIFORGE_VERSION}/Miniforge3-${MINIFORGE_VERSION}-Linux-x86_64.sh \
+    && bash Miniforge3-${MINIFORGE_VERSION}-Linux-x86_64.sh -b -p "${HOME}/conda" \
+    && rm Miniforge3-${MINIFORGE_VERSION}-Linux-x86_64.sh
 
 RUN git clone --depth 1 https://github.com/NOEL-MNI/deepMask.git \
     && rm -rf deepMask/.git
