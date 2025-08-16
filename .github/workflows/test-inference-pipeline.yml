@@ -52,7 +52,9 @@ jobs:
           CI_TESTING_PRED_DIR: "/home/ga/io"
           
       - name: Run tests to compare outputs with previous validated runs
-        run: bash ./tests/run_tests.sh
+        run: |
+          chmod +x ./tests/run_tests.sh
+          conda run --no-capture-output --name deepFCD ./tests/run_tests.sh
         env:
           CI_TESTING_PATIENT_ID: "sub-00055"
           CI_TESTING_PRED_DIR: "/home/ga/io"
