@@ -17,7 +17,7 @@ services:
             - driver: nvidia
               # count: 1
               device_ids: ['1']
-              capabilities: [gpu]
+              capabilities: [gpu,compute,video]
     # volumes:
         # - '$PWD/io:/io'
         # - /var/run/docker.sock:/var/run/docker.sock
