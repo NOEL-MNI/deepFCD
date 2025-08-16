@@ -51,14 +51,20 @@ RUN eval "$(conda shell.bash hook)" \
 
 COPY app/requirements.txt /app/requirements.txt
 
-RUN python -m pip install -r /app/requirements.txt \
-    && conda install -c conda-forge pygpu==0.7.6 \
-    && pip cache purge
+RUN eval "$(conda shell.bash hook)" \
+    && conda create -n deepFCD -c conda-forge python=3.8.20 pygpu==0.7.6 \
+    && conda activate deepFCD \
+    && python -m pip install -r /app/requirements.txt \
+    && conda deactivate
+
+RUN pip cache purge
 
 COPY app/ /app/
 
 COPY tests/ /tests/
 
 RUN sudo chmod -R 777 /app && sudo chmod +x /app/inference.py
+
+ENTRYPOINT ["conda", "run", "--no-capture-output", "-n", "deepFCD"]
 
 CMD ["python3"]
