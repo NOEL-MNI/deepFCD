@@ -41,14 +41,15 @@ OR
 
 ## Pre-requisites
 ```bash
-0. Anaconda Python Environment
-1. Python == 3.8
+0. Conda/Miniforge Python Environment
+1. Python == 3.8.20
 2. Keras == 2.2.4
 3. Theano == 1.0.4
 4. ANTsPy == 0.4.2 (for MRI preprocessing)
-4. ANTsPyNet == 0.2.3 (for deepMask)
-5. PyTorch == 1.8.2 LTS (for deepMask)
-6. h5py == 2.10.0
+5. ANTsPyNet == 0.2.3 (for deepMask)
+6. PyTorch == 1.8.2 LTS (for deepMask)
+7. h5py == 2.10.0
+8. pygpu == 0.7.6
 + app/requirements.txt
 + app/deepMask/app/requirements.txt
 ```
@@ -60,9 +61,11 @@ OR
 git clone --recurse-submodules -j2 https://github.com/NOEL-MNI/deepFCD.git
 cd deepFCD
 
-# install Miniconda3
-wget https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.sh -O ~/miniconda.sh
-bash ~/miniconda.sh -b -p $HOME/miniconda
+# install Miniforge (recommended) or Miniconda
+# Option 1: Miniforge (recommended - includes conda-forge channel by default)
+wget https://github.com/conda-forge/miniforge/releases/download/25.3.1-0/Miniforge3-25.3.1-0-Linux-x86_64.sh
+bash Miniforge3-25.3.1-0-Linux-x86_64.sh -b -p $HOME/conda
+export PATH=$HOME/conda/bin:$PATH
 
 # create and activate a Conda environment for preprocessing
 conda create -n preprocess python=3.8
@@ -72,11 +75,11 @@ python -m pip install -r app/deepMask/app/requirements.txt
 conda deactivate
 
 # create and activate a Conda environment for deepFCD
-conda create -n deepFCD python=3.8
+conda create -n deepFCD -c conda-forge python=3.8.20 pygpu==0.7.6
 conda activate deepFCD
 # install dependencies using pip
 python -m pip install -r app/requirements.txt
-conda install -c conda-forge pygpu=0.7.6
+conda deactivate
 
 ```
 
