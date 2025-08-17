@@ -28,12 +28,17 @@ jobs:
       - name: Check out the repo
         uses: actions/checkout@v5
 
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
       - name: Build main Docker image
         uses: docker/build-push-action@v6
         with:
           context: .
           push: false
           tags: ${{ env.MAIN_IMAGE_NAME }}:latest
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
 
   build_ci_image:
     runs-on: ubuntu-latest
@@ -43,6 +48,9 @@ jobs:
         uses: actions/checkout@v5
         with:
           fetch-depth: 0
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
 
       - name: Check for CI Dockerfile changes
         uses: dorny/paths-filter@v3
@@ -64,3 +72,5 @@ jobs:
           build-args: |
             BASE_IMAGE_TAG=12.2.2-cudnn8-devel-ubuntu22.04
             RUNNER_VERSION=2.328.0
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
