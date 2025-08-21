@@ -25,6 +25,18 @@ jobs:
     runs-on: ubuntu-latest
     if: github.event_name != 'workflow_dispatch' || inputs.build_main == true
     steps:
+      - name: Check starting disk usage
+        run: df -h
+
+      - name: Free disk space
+        run: |
+          sudo rm -rf /usr/share/dotnet
+          docker system prune -af
+          sudo rm -rf "$AGENT_TOOLSDIRECTORY"
+
+      - name: Confirm free space
+        run: df -h
+
       - name: Check out the repo
         uses: actions/checkout@v5
 
@@ -44,6 +56,18 @@ jobs:
     runs-on: ubuntu-latest
     if: github.event_name != 'workflow_dispatch' || inputs.build_ci == true
     steps:
+      - name: Check starting disk usage
+        run: df -h
+
+      - name: Free disk space
+        run: |
+          sudo rm -rf /usr/share/dotnet
+          docker system prune -af
+          sudo rm -rf "$AGENT_TOOLSDIRECTORY"
+
+      - name: Confirm free space
+        run: df -h
+
       - name: Check out the repo
         uses: actions/checkout@v5
         with:

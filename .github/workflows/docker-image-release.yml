@@ -17,6 +17,18 @@ jobs:
     name: Push Docker image to Docker Hub
     runs-on: ubuntu-latest
     steps:
+      - name: Check starting disk usage
+        run: df -h
+
+      - name: Free disk space
+        run: |
+          sudo rm -rf /usr/share/dotnet
+          docker system prune -af
+          sudo rm -rf "$AGENT_TOOLSDIRECTORY"
+
+      - name: Confirm free space
+        run: df -h
+
       - name: Check out the repo
         uses: actions/checkout@v5
       
