@@ -12,9 +12,13 @@ on:
     types: [closed]
   workflow_dispatch:
 
+env:
+  MAIN_IMAGE_NAME: noelmni/deep-fcd
+  CI_IMAGE_NAME: noelmni/deep-fcd_ci
+
 jobs:
-  push_to_registry:
-    name: Push Docker image to Docker Hub
+  push_main_to_registry:
+    name: Push main Docker image to Docker Hub
     runs-on: ubuntu-latest
     steps:
       - name: Check starting disk usage
@@ -31,6 +35,9 @@ jobs:
 
       - name: Check out the repo
         uses: actions/checkout@v5
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
       
       - name: Log in to Docker Hub
         uses: docker/login-action@v3
@@ -42,17 +49,73 @@ jobs:
         id: meta
         uses: docker/metadata-action@v5
         with:
-          images: noelmni/deep-fcd
+          images: ${{ env.MAIN_IMAGE_NAME }}
           tags: |
             type=ref,event=branch
             type=ref,event=pr
             type=semver,pattern={{version}}
             type=sha
       
-      - name: Build and push Docker image
+      - name: Build and push main Docker image
         uses: docker/build-push-action@v6
         with:
           context: .
           push: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+  push_ci_to_registry:
+    name: Push CI Docker image to Docker Hub
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check starting disk usage
+        run: df -h
+
+      - name: Free disk space
+        run: |
+          sudo rm -rf /usr/share/dotnet
+          docker system prune -af
+          sudo rm -rf "$AGENT_TOOLSDIRECTORY"
+
+      - name: Confirm free space
+        run: df -h
+
+      - name: Check out the repo
+        uses: actions/checkout@v5
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+      
+      - name: Log in to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKER_USERNAME }}
+          password: ${{ secrets.DOCKER_PASSWORD }}
+      
+      - name: Extract metadata (tags, labels) for CI Docker image
+        id: ci_meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.CI_IMAGE_NAME }}
+          tags: |
+            type=ref,event=branch,suffix=-cu122-ubuntu22.04-miniforge
+            type=ref,event=pr,suffix=-cu122-ubuntu22.04-miniforge
+            type=semver,pattern={{version}},suffix=-cu122-ubuntu22.04-miniforge
+            type=sha,suffix=-cu122-ubuntu22.04-miniforge
+            type=raw,value=cu122-ubuntu22.04-miniforge
+      
+      - name: Build and push CI Docker image
+        uses: docker/build-push-action@v6
+        with:
+          context: ./ci
+          file: ./ci/runner.Dockerfile
+          push: true
+          tags: ${{ steps.ci_meta.outputs.tags }}
+          labels: ${{ steps.ci_meta.outputs.labels }}
+          build-args: |
+            BASE_IMAGE_TAG=12.2.2-cudnn8-devel-ubuntu22.04
+            RUNNER_VERSION=2.328.0
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
