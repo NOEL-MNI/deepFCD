@@ -1,7 +1,12 @@
 
 name: Testing Inference Pipeline
 
-on: [push, pull_request]
+on:
+  push:
+    branches:
+      - main
+      - dev
+  workflow_dispatch:
 
 env:
   CI_TESTING: True
