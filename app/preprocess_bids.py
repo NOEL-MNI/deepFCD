@@ -7,6 +7,7 @@ import torch
 from mo_dots import to_data
 
 import deepMask.app.vnet as vnet
+
 # from deepMask.app.utils.data import *
 # from deepMask.app.utils.deepmask import *
 from deepMask.app.utils.image_processing import noelImageProcessor
@@ -15,15 +16,15 @@ from deepMask.app.utils.image_processing import noelImageProcessor
 def preprocess_image(id_, t1_fname, t2_fname, indir_, outdir_, preprocess, use_gpu):
     # set up parameters
     # Parse subject and session from id_ to create proper BIDS structure
-    if '_ses-' in id_:
+    if "_ses-" in id_:
         # Split subject and session: sub-PX034_ses-02 -> sub-PX034, ses-02
-        subject_part, session_part = id_.split('_ses-', 1)
-        outdir = os.path.join(outdir_, subject_part, f'ses-{session_part}', 'preproc')
+        subject_part, session_part = id_.split("_ses-", 1)
+        outdir = os.path.join(outdir_, subject_part, f"ses-{session_part}", "anat")
     else:
-        # No session: sub-PX034 -> sub-PX034/preproc
-        outdir = os.path.join(outdir_, id_, 'preproc')
+        # No session: sub-PX034 -> sub-PX034/anat
+        outdir = os.path.join(outdir_, id_, "anat")
     os.makedirs(outdir, exist_ok=True)
-    
+
     # tmpdir = os.path.join(outdir, id_, "tmp")
 
     # os.makedirs(tmpdir,exist_ok=True)
@@ -31,7 +32,7 @@ def preprocess_image(id_, t1_fname, t2_fname, indir_, outdir_, preprocess, use_g
         t1 = os.path.join(indir_, id_, "anat", t1_fname)
     else:
         t1 = t1_fname
-        
+
     if not os.path.isabs(t2_fname):
         t2 = os.path.join(indir_, id_, "anat", t2_fname)
     else:
@@ -53,7 +54,10 @@ def preprocess_image(id_, t1_fname, t2_fname, indir_, outdir_, preprocess, use_g
     args.device_ids = list(range(torch.cuda.device_count()))
     # args.tmpdir = tmpdir
     args.outdir = outdir
-    
+    # temporary working directory expected by deepMask image processor
+    args.tmpdir = os.path.join(outdir, "tmp")
+    os.makedirs(args.tmpdir, exist_ok=True)
+
     mem_size = psutil.virtual_memory().available // (
         1024 * 1024 * 1024
     )  # available RAM in GB
@@ -89,7 +93,7 @@ def preprocess_image(id_, t1_fname, t2_fname, indir_, outdir_, preprocess, use_g
         model=model,
         preprocess=preprocess,
     ).pipeline()
-        
+
 
 if __name__ == "__main__":
     # configuration
@@ -114,7 +118,6 @@ if __name__ == "__main__":
         help="T2-weighted image",
     )
     parser.add_argument(
-        "-i",
         "--indir",
         dest="indir",
         default="data/",
@@ -144,11 +147,11 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     preprocess_image(
-        id_= args.id,
-        t1_fname_= args.t1_fname,
-        t2_fname_= args.t2_fname,
-        indir_= args.indir,
-        outdir_= args.outdir,
-        preprocess_= args.preprocess,
-        use_gpu_= args.use_gpu,
+        id_=args.id,
+        t1_fname=args.t1_fname,
+        t2_fname=args.t2_fname,
+        indir_=args.indir,
+        outdir_=args.outdir,
+        preprocess=args.preprocess,
+        use_gpu=args.use_gpu,
     )

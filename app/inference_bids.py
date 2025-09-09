@@ -14,20 +14,16 @@ import numpy as np
 import setproctitle as spt
 from bids import BIDSLayout
 from config.experiment import options
-from preprocess_bids import preprocess_image
 from tqdm import tqdm
 from tqdm.contrib.concurrent import process_map
 from utils.env import set_theano_flags
 
-# Import diagnostic utilities
 try:
     from utils.input_diagnostic import DeepFCDInputDiagnostic
 except ImportError:
     print("Warning: Could not import input diagnostic utilities")
     DeepFCDInputDiagnostic = None
 
-# Note: Keras imports are done dynamically after Theano flags are set
-# Global variables that will be set after environment setup
 K = None
 load_model = None
 off_the_shelf_model = None
@@ -77,14 +73,9 @@ class DeepFCDInference:
 
     def _setup_paths(self):
         """Set up input and output paths."""
-        # Debug logging to track None values
-        logging.info("Setting up paths...")
-        logging.info(f"args.bidspath: {self.args.bidspath} (type: {type(self.args.bidspath)})")
-        logging.info(f"args.outpath: {self.args.outpath} (type: {type(self.args.outpath)})")
-        
         if self.args.bidspath is None:
             raise ValueError("bidspath argument is None")
-        
+
         if not os.path.isabs(self.args.bidspath):
             self.args.bidspath = os.path.abspath(self.args.bidspath)
 
@@ -98,10 +89,6 @@ class DeepFCDInference:
         self.preproc_outdir = os.path.join(
             self.args.bidspath, "derivatives", "deepFCD-preproc"
         )
-        
-        # Debug logging for final paths
-        logging.info(f"Final outdir: {self.outdir} (type: {type(self.outdir)})")
-        logging.info(f"Final preproc_outdir: {self.preproc_outdir} (type: {type(self.preproc_outdir)})")
 
         # Create both directories
         os.makedirs(self.outdir, exist_ok=True)
@@ -169,9 +156,7 @@ class DeepFCDInference:
 
     def _load_datasets(self):
         """Load original and processed BIDS datasets."""
-        print(self.args.bidspath)
         self.orig_ds = BIDSLayout(self.args.bidspath, validate=False)
-        print(self.orig_ds)
 
     def get_subjects(self, dataset: BIDSLayout) -> List[str]:
         """Get list of subjects to process.
@@ -186,7 +171,6 @@ class DeepFCDInference:
             subjects = dataset.get_subjects()
         else:
             subjects = [s.replace("sub-", "") for s in self.args.subjects]
-            print(subjects)
         return subjects
 
     def get_subject_sessions(self, dataset: BIDSLayout) -> Dict[str, List[str]]:
@@ -202,10 +186,28 @@ class DeepFCDInference:
         subject_sessions = {}
 
         for subject in subjects:
-            sessions = dataset.get_sessions(subject=subject)
-            if sessions:
-                # If sessions exist, use them
-                subject_sessions[subject] = sessions
+            raw_sessions = dataset.get_sessions(subject=subject)
+            norm_sessions = []
+            if raw_sessions:
+                for s in raw_sessions:
+                    # Convert pybids NullType or other non-string values to None
+                    if s is None:
+                        norm_sessions.append(None)
+                        continue
+                    try:
+                        s_str = s if isinstance(s, str) else str(s)
+                    except Exception:
+                        norm_sessions.append(None)
+                        continue
+                    s_clean = s_str.strip()
+                    if s_clean == "" or s_clean.lower() in ("none", "null"):
+                        norm_sessions.append(None)
+                    else:
+                        # strip leading 'ses-' if present, keep the bare session id
+                        if s_clean.startswith("ses-"):
+                            s_clean = s_clean.replace("ses-", "")
+                        norm_sessions.append(s_clean)
+                subject_sessions[subject] = norm_sessions
             else:
                 # If no sessions, use None to indicate no session structure
                 subject_sessions[subject] = [None]
@@ -233,96 +235,146 @@ class DeepFCDPreprocessor:
         Returns:
             True if all expected preprocessing outputs exist, False otherwise
         """
-        # Construct expected output directory
-        if '_ses-' in fullid:
-            subject_part, session_part = fullid.split('_ses-', 1)
-            output_dir = os.path.join(self.inference.preproc_outdir, subject_part, f'ses-{session_part}', 'preproc')
+        # Construct expected output directory - BIDS-compliant anat directory
+        if "_ses-" in fullid:
+            subject_part, session_part = fullid.split("_ses-", 1)
+            anat_dir = os.path.join(
+                self.inference.preproc_outdir,
+                subject_part,
+                f"ses-{session_part}",
+                "anat",
+            )
+            # Legacy preproc directory for backward compatibility
+            preproc_dir = os.path.join(
+                self.inference.preproc_outdir,
+                subject_part,
+                f"ses-{session_part}",
+                "preproc",
+            )
         else:
-            output_dir = os.path.join(self.inference.preproc_outdir, fullid, 'preproc')
+            anat_dir = os.path.join(self.inference.preproc_outdir, fullid, "anat")
+            # Legacy preproc directory for backward compatibility
+            preproc_dir = os.path.join(self.inference.preproc_outdir, fullid, "preproc")
 
-        # Expected output files
-        expected_files = [
-            os.path.join(output_dir, f"{fullid}_space-MNI152_T1w_brain.nii.gz"),
-            os.path.join(output_dir, f"{fullid}_space-MNI152_FLAIR_brain.nii.gz"),
+        # Expected output files - try BIDS-compliant anat directory first, then legacy preproc
+        expected_files_anat = [
+            os.path.join(anat_dir, f"{fullid}_space-MNI152_T1w_final.nii.gz"),
+            os.path.join(anat_dir, f"{fullid}_space-MNI152_FLAIR_final.nii.gz"),
         ]
 
-        # Check if all files exist
-        all_exist = all(os.path.isfile(f) for f in expected_files)
-        
+        # Also check for brain extracted versions and legacy preproc directory
+        alternative_files = [
+            os.path.join(anat_dir, f"{fullid}_space-MNI152_T1w_brain.nii.gz"),
+            os.path.join(anat_dir, f"{fullid}_space-MNI152_FLAIR_brain.nii.gz"),
+            os.path.join(preproc_dir, f"{fullid}_space-MNI152_T1w_final.nii.gz"),
+            os.path.join(preproc_dir, f"{fullid}_space-MNI152_FLAIR_final.nii.gz"),
+            os.path.join(preproc_dir, f"{fullid}_space-MNI152_T1w_brain.nii.gz"),
+            os.path.join(preproc_dir, f"{fullid}_space-MNI152_FLAIR_brain.nii.gz"),
+        ]
+
+        # Check if all files exist (primary or alternative)
+        files_found = []
+        # Check T1w files (try anat first, then alternatives)
+        t1_found = False
+        for t1_file in [expected_files_anat[0]] + [
+            alternative_files[i] for i in [0, 2, 4]
+        ]:
+            if os.path.isfile(t1_file):
+                files_found.append(t1_file)
+                t1_found = True
+                break
+
+        # Check FLAIR files (try anat first, then alternatives)
+        flair_found = False
+        for flair_file in [expected_files_anat[1]] + [
+            alternative_files[i] for i in [1, 3, 5]
+        ]:
+            if os.path.isfile(flair_file):
+                files_found.append(flair_file)
+                flair_found = True
+                break
+
+        all_exist = t1_found and flair_found
+
         if all_exist:
             logging.info(f"Preprocessing outputs already exist for {fullid}")
-            for f in expected_files:
+            for f in files_found:
                 logging.debug(f"  Found: {f}")
         else:
-            missing_files = [f for f in expected_files if not os.path.isfile(f)]
-            logging.debug(f"Missing preprocessing outputs for {fullid}: {len(missing_files)} files")
+            all_candidate_files = expected_files_anat + alternative_files
+            missing_files = [f for f in all_candidate_files if not os.path.isfile(f)]
+            logging.debug(
+                f"Missing preprocessing outputs for {fullid}: {len(missing_files)} files"
+            )
             for f in missing_files:
                 logging.debug(f"  Missing: {f}")
-        
+
         return all_exist
 
     def _provide_diagnostic_guidance(self, fullid: str, missing_modality: str) -> None:
         """Provide detailed guidance when required files are not found.
-        
+
         Args:
             fullid: Full subject ID (e.g., sub-001_ses-01)
             missing_modality: The modality that's missing (T1w or FLAIR)
         """
-        print("\n" + "="*70)
+        print("\n" + "=" * 70)
         print(f"🔍 DEEPFCD INPUT DIAGNOSTIC for {fullid}")
-        print("="*70)
-        
+        print("=" * 70)
+
         # Parse subject and session
-        if '_ses-' in fullid:
-            subject_id, session_part = fullid.split('_ses-', 1)
+        if "_ses-" in fullid:
+            subject_id, session_part = fullid.split("_ses-", 1)
             session_id = f"ses-{session_part}"
         else:
             subject_id, session_id = fullid, None
-            
+
         # Expected file patterns
         expected_t1 = f"{fullid}_space-MNI152_T1w_brain.nii.gz"
         expected_t2 = f"{fullid}_space-MNI152_FLAIR_brain.nii.gz"
-        
+
         # Expected directory
         if session_id:
             expected_dir = os.path.join(
-                self.inference.preproc_outdir, subject_id, session_id, 'preproc'
+                self.inference.preproc_outdir, subject_id, session_id, "preproc"
             )
         else:
-            expected_dir = os.path.join(self.inference.preproc_outdir, fullid, 'preproc')
-            
+            expected_dir = os.path.join(
+                self.inference.preproc_outdir, fullid, "preproc"
+            )
+
         print(f"❌ Missing: {missing_modality} preprocessed files for {fullid}")
         print("📁 Expected location: {expected_dir}")
         print("📄 Expected files:")
         print(f"   • {expected_t1}")
         print(f"   • {expected_t2}")
-        
+
         # Check what's actually available
         print("\n🔍 Checking available files...")
-        
+
         # Check if directory exists
         if os.path.exists(expected_dir):
             files_in_dir = os.listdir(expected_dir)
             if files_in_dir:
                 print(f"✓ Directory exists with {len(files_in_dir)} files:")
                 for f in sorted(files_in_dir):
-                    if f.endswith('.nii.gz'):
+                    if f.endswith(".nii.gz"):
                         print(f"   📄 {f}")
             else:
                 print(f"⚠️  Directory exists but is empty")
         else:
             print(f"❌ Expected directory does not exist: {expected_dir}")
-            
+
         # Check for raw files in original dataset
         self._check_raw_files_availability(subject_id, session_id)
-        
+
         # Provide recommendations
         print("\n💡 RECOMMENDATIONS:")
         print("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
-        
+
         # Check if raw files are available
         raw_available = self._check_if_raw_files_exist(subject_id, session_id)
-        
+
         if raw_available["has_t1"] and raw_available["has_flair"]:
             print("🔧 SOLUTION: Raw T1w and FLAIR images found. Run preprocessing:")
             print("")
@@ -333,7 +385,7 @@ class DeepFCDPreprocessor:
             print("       -bm")
             print("")
             print("   The -pp flag will automatically generate the required files.")
-            
+
         elif raw_available["has_t1"] or raw_available["has_flair"]:
             print("⚠️  PARTIAL DATA: Only some raw images found")
             missing_modalities = []
@@ -341,10 +393,10 @@ class DeepFCDPreprocessor:
                 missing_modalities.append("T1w")
             if not raw_available["has_flair"]:
                 missing_modalities.append("FLAIR")
-                
+
             print(f"   Missing: {', '.join(missing_modalities)}")
             print("   📋 Check your BIDS dataset structure")
-            
+
         else:
             print("❌ NO RAW DATA: No T1w or FLAIR images found in original dataset")
             print("   📋 Required BIDS structure:")
@@ -360,63 +412,67 @@ class DeepFCDPreprocessor:
                 print("   │   └── anat/")
                 print(f"   │       ├── {fullid}_T1w.nii.gz")
                 print(f"   │       └── {fullid}_FLAIR.nii.gz")
-                
+
         print("\n📚 For more information:")
         print("   • Input requirements: docs/input_requirements.md")
         print("   • BIDS specification: https://bids-specification.readthedocs.io/")
-        print("="*70 + "\n")
-        
-    def _check_raw_files_availability(self, subject_id: str, session_id: Optional[str]) -> None:
+        print("=" * 70 + "\n")
+
+    def _check_raw_files_availability(
+        self, subject_id: str, session_id: Optional[str]
+    ) -> None:
         """Check and report on raw file availability."""
         if not self.inference.orig_ds:
-            print(f"⚠️  Cannot check raw files (original dataset not loaded)")
+            print("⚠️  Cannot check raw files (original dataset not loaded)")
             return
-            
+
         # Build query
         query = {
-            "subject": subject_id.replace('sub-', ''),
-            "extension": [".nii.gz", ".nii"]
+            "subject": subject_id.replace("sub-", ""),
+            "extension": [".nii.gz", ".nii"],
         }
         if session_id:
-            query["session"] = session_id.replace('ses-', '')
-            
+            query["session"] = session_id.replace("ses-", "")
+
         # Check T1w
         t1_files = self.inference.orig_ds.get(suffix="T1w", **query)
         flair_files = self.inference.orig_ds.get(suffix="FLAIR", **query)
-        
+
         print("📊 Raw file availability:")
         if t1_files:
             print(f"   ✓ T1w: {t1_files[0].path}")
         else:
             print("   ❌ T1w: Not found")
-            
+
         if flair_files:
             print(f"   ✓ FLAIR: {flair_files[0].path}")
         else:
             print("   ❌ FLAIR: Not found")
-            
-    def _check_if_raw_files_exist(self, subject_id: str, session_id: Optional[str]) -> Dict[str, bool]:
+
+    def _check_if_raw_files_exist(
+        self, subject_id: str, session_id: Optional[str]
+    ) -> Dict[str, bool]:
         """Check if raw files exist and return status."""
         result = {"has_t1": False, "has_flair": False}
-        
+
         if not self.inference.orig_ds:
             return result
-            
+
         # Build query
         query = {
-            "subject": subject_id.replace('sub-', ''),
-            "extension": [".nii.gz", ".nii"]
+            "subject": subject_id.replace("sub-", ""),
+            "extension": [".nii.gz", ".nii"],
         }
         if session_id:
-            query["session"] = session_id.replace('ses-', '')
-            
+            query["session"] = session_id.replace("ses-", "")
+
         # Check files
         t1_files = self.inference.orig_ds.get(suffix="T1w", **query)
         flair_files = self.inference.orig_ds.get(suffix="FLAIR", **query)
-        
+
         result["has_t1"] = len(t1_files) > 0
         result["has_flair"] = len(flair_files) > 0
-        
+
         return result
 
     def preprocess_subjects(self, subjects: List[str]):
@@ -465,13 +521,17 @@ class DeepFCDPreprocessor:
                         fullid = f"sub-{subject}_ses-{session}"
                     else:
                         fullid = f"sub-{subject}"
-                    
+
                     # Check if preprocessing outputs already exist
                     if self._check_preprocessing_outputs_exist(fullid):
                         if self.inference.args.overwrite_preprocessing:
-                            logging.info(f"Preprocessing outputs exist for {fullid}, but --overwrite-preprocessing specified")
+                            logging.info(
+                                f"Preprocessing outputs exist for {fullid}, but --overwrite-preprocessing specified"
+                            )
                         else:
-                            logging.info(f"Skipping preprocessing for {fullid} (outputs already exist, use --overwrite-preprocessing to force)")
+                            logging.info(
+                                f"Skipping preprocessing for {fullid} (outputs already exist, use --overwrite-preprocessing to force)"
+                            )
                             skipped_subjects.append(fullid)
                             continue
 
@@ -495,22 +555,26 @@ class DeepFCDPreprocessor:
         logging.info(f"  Total subject-session combinations found: {total_subjects}")
         logging.info(f"  Will be processed: {len(fullids)}")
         logging.info(f"  Skipped (outputs exist): {len(skipped_subjects)}")
-        
+
         if skipped_subjects:
             logging.info("Skipped subjects:")
             for i, fullid in enumerate(skipped_subjects):
-                logging.info(f"  {i+1}. {fullid}")
-        
+                logging.info(f"  {i + 1}. {fullid}")
+
         if fullids:
             logging.info("Will process:")
             for i, fullid in enumerate(fullids):
-                logging.info(f"  {i+1}. {fullid}")
-        
+                logging.info(f"  {i + 1}. {fullid}")
+
         if not fullids:
             if skipped_subjects:
-                logging.info("All preprocessing outputs already exist. Use --overwrite to force reprocessing.")
+                logging.info(
+                    "All preprocessing outputs already exist. Use --overwrite to force reprocessing."
+                )
             else:
-                logging.warning("No valid subject-session combinations found for preprocessing")
+                logging.warning(
+                    "No valid subject-session combinations found for preprocessing"
+                )
             return
 
         # Process images in parallel using the preprocessing derivatives directory
@@ -558,6 +622,12 @@ class DeepFCDModel:
         from models.noel_models_keras import off_the_shelf_model
         from utils.base import test_model, transform_img
 
+        # Validate that critical functions were imported successfully
+        if test_model is None:
+            raise ImportError("Failed to import test_model function from utils.base")
+        if transform_img is None:
+            raise ImportError("Failed to import transform_img function from utils.base")
+
         # Store references for later use
         self.K = K
         self.load_model = load_model
@@ -591,13 +661,15 @@ class DeepFCDModel:
         logging.info(f"outdir: {self.inference.outdir}")
         logging.info(f"bidspath: {self.inference.args.bidspath}")
 
-        options['MNI152space'] = "MNI152"
-        
+        options["MNI152space"] = "MNI152"
+
         # Validate critical paths
         if options["test_folder"] is None:
             raise ValueError("test_folder is None - check outdir configuration")
         if not isinstance(options["test_folder"], (str, bytes, os.PathLike)):
-            raise ValueError(f"test_folder is not a valid path type: {type(options['test_folder'])} = {options['test_folder']}")
+            raise ValueError(
+                f"test_folder is not a valid path type: {type(options['test_folder'])} = {options['test_folder']}"
+            )
         spt.setproctitle(options["experiment"])
 
     def load_trained_model(self):
@@ -646,6 +718,32 @@ class DeepFCDProcessor:
         self.inference = inference_processor
         self.model_handler = model_handler
 
+    def _normalize_session(self, session_id: Optional[str]) -> Optional[str]:
+        """Normalize session identifier values coming from pybids or user input.
+
+        This converts pybids NullType or other non-string/null-like values to
+        Python None, and ensures string sessions are returned in the
+        'ses-XXX' form when appropriate.
+        """
+        if session_id is None:
+            return None
+        # Convert non-string session identifiers (e.g. pybids NullType) to string
+        try:
+            s = session_id if isinstance(session_id, str) else str(session_id)
+        except Exception:
+            return None
+
+        s_clean = s.strip()
+        if s_clean == "":
+            return None
+        if s_clean.lower() in ("none", "null"):
+            return None
+        # If already in bids form, return as-is
+        if s_clean.startswith("ses-"):
+            return s_clean
+        # Otherwise prefix
+        return f"ses-{s_clean}"
+
     def process_subjects(self, subjects: List[str]):
         """Run inference on all subjects.
 
@@ -654,20 +752,27 @@ class DeepFCDProcessor:
         """
         # Check if preprocessing output directory exists and has content
         if not os.path.exists(self.inference.preproc_outdir):
-            logging.error(f"Preprocessing output directory does not exist: {self.inference.preproc_outdir}")
+            logging.error(
+                f"Preprocessing output directory does not exist: {self.inference.preproc_outdir}"
+            )
             logging.error("Please run preprocessing first with the -bm flag")
             return
-            
+
         # Check if preprocessing directory has any subject folders
-        subject_dirs = [d for d in os.listdir(self.inference.preproc_outdir) 
-                       if os.path.isdir(os.path.join(self.inference.preproc_outdir, d)) 
-                       and d.startswith('sub-')]
-        
+        subject_dirs = [
+            d
+            for d in os.listdir(self.inference.preproc_outdir)
+            if os.path.isdir(os.path.join(self.inference.preproc_outdir, d))
+            and d.startswith("sub-")
+        ]
+
         if not subject_dirs:
-            logging.error(f"No preprocessed subjects found in: {self.inference.preproc_outdir}")
+            logging.error(
+                f"No preprocessed subjects found in: {self.inference.preproc_outdir}"
+            )
             logging.error("Please run preprocessing first with the -bm flag")
             return
-            
+
         logging.info(f"Found {len(subject_dirs)} preprocessed subjects: {subject_dirs}")
 
         # Load processed dataset from preprocessing derivatives
@@ -705,9 +810,16 @@ class DeepFCDProcessor:
             colour="blue",
         ):
             logging.info(f"Processing {fullid}")
+            logging.debug(f"test_model function: {test_model}")
+            logging.debug(f"transform_img function: {transform_img}")
+            if test_model is None:
+                logging.error(f"test_model is None for {fullid}")
+            if transform_img is None:
+                logging.error(f"transform_img is None for {fullid}")
             self._process_single_subject(
                 subject_id, session_id, fullid, test_model, transform_img
             )
+            logging.info(f"Inference finished for {fullid}")
 
     def _process_single_subject(
         self,
@@ -731,6 +843,9 @@ class DeepFCDProcessor:
         # Get file paths
         file_paths = self._get_subject_file_paths(subject_id, session_id, fullid)
         if not file_paths:
+            logging.info(
+                f"Skipping {fullid}: required input or transform files not found"
+            )
             return
 
         t1_file, t2_file, orig_bidsfiles, orig_files, t1_transform, t2_transform = (
@@ -739,6 +854,21 @@ class DeepFCDProcessor:
 
         # Prepare data structures
         files = [t1_file, t2_file]
+
+        if self.inference.args.preprocess and self.inference.args.brainmask:
+            try:
+                from preprocess_bids import preprocess_image
+            except Exception:
+                logging.exception(
+                    "Failed to import preprocess_image for preprocessing step"
+                )
+                raise
+        else:
+            logging.info(
+                "DeepMask preprocessing not requested; proceeding to inference using existing preprocessed outputs"
+            )
+            preprocess_image = None
+
         transform_files = [t1_transform, t2_transform]
 
         test_data = {fullid: {m: f for m, f in zip(self.inference.modalities, files)}}
@@ -754,8 +884,10 @@ class DeepFCDProcessor:
         if options["test_folder"] is None:
             raise ValueError(f"test_folder is None for {fullid}")
         if not isinstance(options["test_folder"], (str, bytes, os.PathLike)):
-            raise ValueError(f"test_folder is not a valid path type for {fullid}: {type(options['test_folder'])} = {options['test_folder']}")
-            
+            raise ValueError(
+                f"test_folder is not a valid path type for {fullid}: {type(options['test_folder'])} = {options['test_folder']}"
+            )
+
         # Extract subject and session from fullid
         if "_ses-" in fullid:
             subject_part, session_part = fullid.split("_ses-", 1)
@@ -768,12 +900,28 @@ class DeepFCDProcessor:
 
         options["pred_folder"] = pred_folder
         os.makedirs(options["pred_folder"], exist_ok=True)
+        try:
+            logging.info(f"Created pred_folder: {options['pred_folder']}")
+            logging.info(
+                f"test_folder exists: {os.path.exists(options['test_folder'])}"
+            )
+            logging.info(
+                f"Contents of test_folder: {os.listdir(options['test_folder'])}"
+            )
+            logging.info(
+                f"Contents of pred_folder: {os.listdir(options['pred_folder'])}"
+            )
+        except Exception:
+            logging.exception("Could not list prediction directories for debugging")
 
         # Check if predictions already exist
         pred_files = self._get_prediction_file_paths(fullid)
         if self._predictions_exist(
             pred_files, orig_bidsfiles, orig_files, transform_files, transform_img_func
         ):
+            logging.info(
+                f"Skipping {fullid}: predictions already exist and overwrite not set"
+            )
             return
 
         # Run inference
@@ -805,7 +953,7 @@ class DeepFCDProcessor:
             # Build query parameters for processed files
             proc_query = {
                 "subject": subject_id,
-                "space": options['MNI152space'],
+                "space": options["MNI152space"],
                 "label": "brain",
                 "extension": ".nii.gz",
             }
@@ -816,26 +964,38 @@ class DeepFCDProcessor:
             # Build query parameters for transform files
             transform_query = {"subject": subject_id, "extension": "mat"}
 
-            if session_id is not None:
-                proc_query["session"] = session_id
-                orig_query["session"] = session_id
-                transform_query["session"] = session_id
+            # Normalize session identifiers to avoid passing non-string values
+            norm_session = self._normalize_session(session_id)
+            if norm_session is not None:
+                # BIDSLayout expects the session value without the 'ses-' prefix
+                proc_query["session"] = norm_session.replace("ses-", "")
+                orig_query["session"] = norm_session.replace("ses-", "")
+                transform_query["session"] = norm_session.replace("ses-", "")
 
             # Get T1 files - try direct file path first, then BIDS query
-            bids_subject_id = f"sub-{subject_id}" if not subject_id.startswith("sub-") else subject_id
-            bids_session_id = f"ses-{session_id}" if session_id and not session_id.startswith("ses-") else session_id
-            
-            t1_file = self._get_preprocessed_file(bids_subject_id, bids_session_id, "T1w", self.inference.preproc_outdir)
+            bids_subject_id = (
+                f"sub-{subject_id}" if not subject_id.startswith("sub-") else subject_id
+            )
+            bids_session_id = None
+            norm_session = self._normalize_session(session_id)
+            if norm_session is not None:
+                bids_session_id = norm_session
+
+            t1_file = self._get_preprocessed_file(
+                bids_subject_id, bids_session_id, "T1w", self.inference.preproc_outdir
+            )
             if not t1_file:
                 # Fallback to BIDS query for T1w
                 proc_query["suffix"] = "T1w"
                 t1_proc_files = self.inference.proc_ds.get(**proc_query)
                 if not t1_proc_files:
                     logging.error(f"No processed T1w files found for {fullid}")
-                    self._provide_diagnostic_guidance(bids_subject_id, bids_session_id, self.inference.preproc_outdir)
+                    self._provide_diagnostic_guidance(
+                        bids_subject_id, bids_session_id, self.inference.preproc_outdir
+                    )
                     return None
                 t1_file = t1_proc_files[0].path
-                
+
             if t1_file is None:
                 logging.error(f"T1w file path is None for {fullid}")
                 return None
@@ -848,32 +1008,45 @@ class DeepFCDProcessor:
             orig_t1_file = orig_t1_files[0]
 
             # Get T1 transform file - try direct file path first, then BIDS query
-            t1_transform = self._get_transform_file(bids_subject_id, bids_session_id, "T1w", self.inference.preproc_outdir)
+            t1_transform = self._get_transform_file(
+                bids_subject_id, bids_session_id, "T1w", self.inference.preproc_outdir
+            )
+            logging.debug(
+                f"T1 transform from _get_transform_file: {t1_transform} (type: {type(t1_transform)})"
+            )
             if not t1_transform:
                 # Fallback to BIDS query for T1w transforms
                 transform_query["suffix"] = "T1w"
                 t1_transform_files = self.inference.proc_ds.get(**transform_query)
+                logging.debug(f"T1 transform BIDS query result: {t1_transform_files}")
                 if not t1_transform_files:
                     logging.error(f"No T1w transform files found for {fullid}")
                     return None
                 t1_transform = t1_transform_files[0].path
+                logging.debug(
+                    f"T1 transform from BIDS query: {t1_transform} (type: {type(t1_transform)})"
+                )
                 if t1_transform is None:
                     logging.error(f"T1w transform path is None for {fullid}")
                     return None
 
             # Get FLAIR files
-            # Get FLAIR/T2 files - try direct file path first, then BIDS query  
-            t2_file = self._get_preprocessed_file(bids_subject_id, bids_session_id, "FLAIR", self.inference.preproc_outdir)
+            # Get FLAIR/T2 files - try direct file path first, then BIDS query
+            t2_file = self._get_preprocessed_file(
+                bids_subject_id, bids_session_id, "FLAIR", self.inference.preproc_outdir
+            )
             if not t2_file:
                 # Fallback to BIDS query for FLAIR
                 proc_query["suffix"] = "FLAIR"
                 t2_proc_files = self.inference.proc_ds.get(**proc_query)
                 if not t2_proc_files:
                     logging.error(f"No processed FLAIR files found for {fullid}")
-                    self._provide_diagnostic_guidance(bids_subject_id, bids_session_id, self.inference.preproc_outdir)
+                    self._provide_diagnostic_guidance(
+                        bids_subject_id, bids_session_id, self.inference.preproc_outdir
+                    )
                     return None
                 t2_file = t2_proc_files[0].path
-                
+
             if t2_file is None:
                 logging.error(f"FLAIR file path is None for {fullid}")
                 return None
@@ -886,15 +1059,26 @@ class DeepFCDProcessor:
             orig_t2_file = orig_t2_files[0]
 
             # Get FLAIR transform file - try direct file path first, then BIDS query
-            t2_transform = self._get_transform_file(bids_subject_id, bids_session_id, "FLAIR", self.inference.preproc_outdir)
+            t2_transform = self._get_transform_file(
+                bids_subject_id, bids_session_id, "FLAIR", self.inference.preproc_outdir
+            )
+            logging.debug(
+                f"FLAIR transform from _get_transform_file: {t2_transform} (type: {type(t2_transform)})"
+            )
             if not t2_transform:
                 # Fallback to BIDS query for FLAIR transforms
                 transform_query["suffix"] = "FLAIR"
                 t2_transform_files = self.inference.proc_ds.get(**transform_query)
+                logging.debug(
+                    f"FLAIR transform BIDS query result: {t2_transform_files}"
+                )
                 if not t2_transform_files:
                     logging.error(f"No FLAIR transform files found for {fullid}")
                     return None
                 t2_transform = t2_transform_files[0].path
+                logging.debug(
+                    f"FLAIR transform from BIDS query: {t2_transform} (type: {type(t2_transform)})"
+                )
                 if t2_transform is None:
                     logging.error(f"FLAIR transform path is None for {fullid}")
                     return None
@@ -913,17 +1097,25 @@ class DeepFCDProcessor:
 
         except (IndexError, AttributeError, TypeError) as e:
             logging.error(f"Error getting file paths for {fullid}: {e}")
-            logging.error(f"  Processed dataset directory: {self.inference.preproc_outdir}")
-            logging.error(f"  Original dataset directory: {self.inference.args.bidspath}")
+            logging.error(
+                f"  Processed dataset directory: {self.inference.preproc_outdir}"
+            )
+            logging.error(
+                f"  Original dataset directory: {self.inference.args.bidspath}"
+            )
             # List available files for debugging
-            if hasattr(self.inference, 'proc_ds') and self.inference.proc_ds:
+            if hasattr(self.inference, "proc_ds") and self.inference.proc_ds:
                 try:
                     available_files = self.inference.proc_ds.get(subject=subject_id)
-                    logging.error(f"  Available processed files for sub-{subject_id}: {len(available_files)} files")
+                    logging.error(
+                        f"  Available processed files for sub-{subject_id}: {len(available_files)} files"
+                    )
                     for f in available_files[:5]:  # Show first 5 files
                         logging.error(f"    {f.path}")
                     if len(available_files) > 5:
-                        logging.error(f"    ... and {len(available_files) - 5} more files")
+                        logging.error(
+                            f"    ... and {len(available_files) - 5} more files"
+                        )
                 except Exception:
                     logging.error("  Could not list available processed files")
             return None
@@ -943,8 +1135,10 @@ class DeepFCDProcessor:
         if options["pred_folder"] is None:
             raise ValueError(f"pred_folder is None for {fullid}")
         if not isinstance(options["pred_folder"], (str, bytes, os.PathLike)):
-            raise ValueError(f"pred_folder is not a valid path type for {fullid}: {type(options['pred_folder'])} = {options['pred_folder']}")
-        
+            raise ValueError(
+                f"pred_folder is not a valid path type for {fullid}: {type(options['pred_folder'])} = {options['pred_folder']}"
+            )
+
         # Create BIDS-compliant filenames for predictions
         base_filename = f"{fullid}_space-{options['MNI152space']}_desc-deepFCD"
 
@@ -1051,6 +1245,15 @@ class DeepFCDProcessor:
             transforms = None
 
         # Run model inference
+        logging.debug(f"About to call test_model_func: {test_model_func}")
+        logging.info(f"Pred folder for {fullid}: {options.get('pred_folder')}")
+        logging.info(
+            f"Planned output names: mean={os.path.join(options.get('pred_folder', ''), options.get('fullid', '') + '_space-' + options.get('MNI152space', '') + '_probseg-mean.nii.gz')}"
+        )
+        if test_model_func is None:
+            logging.error(f"test_model_func is None for {fullid}")
+            raise ValueError(f"test_model_func is None for {fullid}")
+
         outputs = test_model_func(
             self.model_handler.model,
             t_data,
@@ -1062,11 +1265,18 @@ class DeepFCDProcessor:
             invert_xfrm=True,
         )
 
+        logging.info(f"test_model returned outputs: {list(outputs.keys())}")
+
         # Transform outputs back to original space
         for k, v in outputs.items():
             targetspace = None
             if "space" in orig_bidsfiles[0].entities:
                 targetspace = orig_bidsfiles[0].entities["space"]
+
+            logging.debug(f"About to call transform_img_func: {transform_img_func}")
+            if transform_img_func is None:
+                logging.error(f"transform_img_func is None for {fullid}")
+                raise ValueError(f"transform_img_func is None for {fullid}")
 
             transform_img_func(
                 v,
@@ -1083,113 +1293,254 @@ class DeepFCDProcessor:
         logging.info("time elapsed: ~ {} minutes".format(diff))
         logging.info("-" * 70)
 
-    def _get_preprocessed_file(self, subject_id: str, session_id: str, modality: str, preproc_outdir: str) -> Optional[str]:
+    def _get_preprocessed_file(
+        self, subject_id: str, session_id: str, modality: str, preproc_outdir: str
+    ) -> Optional[str]:
         """Get preprocessed file path by checking direct file paths.
-        
+
         Args:
-            subject_id: Subject identifier
-            session_id: Session identifier  
+            subject_id: Subject identifier (e.g., 'sub-PX034')
+            session_id: Session identifier (e.g., 'ses-02' or None)
             modality: Modality type (T1w or FLAIR)
             preproc_outdir: Preprocessing output directory
-            
+
         Returns:
             Path to preprocessed file if found, None otherwise
         """
-        # Determine file suffix based on modality
+        # Construct the full ID
+        # session_id may be like 'ses-01' or None
+        if session_id and session_id not in ("None", "null"):
+            # remove any leading 'ses-' for filesystem paths when joining
+            sess = (
+                session_id.replace("ses-", "")
+                if session_id.startswith("ses-")
+                else session_id
+            )
+            fullid = f"{subject_id}_ses-{sess}"
+            # BIDS-compliant anat directory
+            anat_dir = os.path.join(preproc_outdir, subject_id, f"ses-{sess}", "anat")
+            # Legacy preproc directory for backward compatibility
+            preproc_dir = os.path.join(
+                preproc_outdir, subject_id, f"ses-{sess}", "preproc"
+            )
+        else:
+            fullid = subject_id
+            # BIDS-compliant anat directory
+            anat_dir = os.path.join(preproc_outdir, subject_id, "anat")
+            # Legacy preproc directory for backward compatibility
+            preproc_dir = os.path.join(preproc_outdir, subject_id, "preproc")
+
+        # Determine file suffix based on modality - using actual preprocessing output naming
         if modality == "T1w":
-            suffix = "space-MNI152_T1w_brain.nii.gz"
+            actual_filename = f"{fullid}_space-MNI152_T1w_final.nii.gz"
+            brain_filename = f"{fullid}_space-MNI152_T1w_brain.nii.gz"
+            bids_filename = f"{fullid}_space-MNI152NLin2009aSym_label-brain_T1w.nii.gz"
         elif modality == "FLAIR":
-            suffix = "space-MNI152_FLAIR_brain.nii.gz"
+            actual_filename = f"{fullid}_space-MNI152_FLAIR_final.nii.gz"
+            brain_filename = f"{fullid}_space-MNI152_FLAIR_brain.nii.gz"
+            bids_filename = (
+                f"{fullid}_space-MNI152NLin2009aSym_label-brain_FLAIR.nii.gz"
+            )
         else:
             logging.warning(f"Unknown modality: {modality}")
             return None
-            
-        # Construct expected file path - files are in preproc subdirectory
-        filename = f"{subject_id}_{session_id}_{suffix}"
-        filepath = os.path.join(preproc_outdir, subject_id, session_id, "preproc", filename)
-        
-        # Check if file exists
-        if os.path.exists(filepath):
-            logging.info(f"Found preprocessed {modality} file: {filepath}")
-            return filepath
-        else:
-            logging.debug(f"Preprocessed {modality} file not found at: {filepath}")
-            return None
 
-    def _get_transform_file(self, subject_id: str, session_id: str, modality: str, preproc_outdir: str) -> Optional[str]:
+        # Try different file paths in order of preference
+        candidate_paths = [
+            # BIDS-compliant anat directory with actual preprocessing naming
+            os.path.join(anat_dir, actual_filename),
+            # BIDS-compliant anat directory with brain extracted naming
+            os.path.join(anat_dir, brain_filename),
+            # BIDS-compliant anat directory with BIDS naming
+            os.path.join(anat_dir, bids_filename),
+            # Legacy preproc directory with actual preprocessing naming (for backward compatibility)
+            os.path.join(preproc_dir, actual_filename),
+            # Legacy preproc directory with brain extracted naming
+            os.path.join(preproc_dir, brain_filename),
+            # Legacy preproc directory with BIDS naming
+            os.path.join(preproc_dir, bids_filename),
+            # (legacy/fallback names removed intentionally)
+        ]
+
+        for filepath in candidate_paths:
+            if os.path.exists(filepath):
+                logging.info(f"Found preprocessed {modality} file: {filepath}")
+                return filepath
+
+        # Log all attempted paths for debugging
+        logging.debug(f"Preprocessed {modality} file not found. Tried paths:")
+        for path in candidate_paths:
+            logging.debug(f"  - {path}")
+
+        return None
+
+    def _get_transform_file(
+        self, subject_id: str, session_id: str, modality: str, preproc_outdir: str
+    ) -> Optional[str]:
         """Get transform file path by checking direct file paths.
-        
+
         Args:
-            subject_id: Subject identifier
-            session_id: Session identifier  
+            subject_id: Subject identifier (e.g., 'sub-PX034')
+            session_id: Session identifier (e.g., 'ses-02' or None)
             modality: Modality type (T1w or FLAIR)
             preproc_outdir: Preprocessing output directory
-            
+
         Returns:
             Path to transform file if found, None otherwise
         """
-        # Determine file suffix based on modality
+        # Construct the full ID
+        # session_id may be like 'ses-01' or None
+        if session_id and session_id not in ("None", "null"):
+            sess = (
+                session_id.replace("ses-", "")
+                if session_id.startswith("ses-")
+                else session_id
+            )
+            fullid = f"{subject_id}_ses-{sess}"
+            # BIDS-compliant xfm directory at session level
+            xfm_dir = os.path.join(preproc_outdir, subject_id, f"ses-{sess}", "xfm")
+            # BIDS-compliant anat directory
+            anat_dir = os.path.join(preproc_outdir, subject_id, f"ses-{sess}", "anat")
+            # Legacy directories for backward compatibility
+            anat_transforms_dir = os.path.join(
+                preproc_outdir, subject_id, f"ses-{sess}", "anat", "transforms"
+            )
+            transforms_dir = os.path.join(
+                preproc_outdir, subject_id, f"ses-{sess}", "preproc", "transforms"
+            )
+            preproc_dir = os.path.join(
+                preproc_outdir, subject_id, f"ses-{sess}", "preproc"
+            )
+        else:
+            fullid = subject_id
+            # BIDS-compliant xfm directory at subject level
+            xfm_dir = os.path.join(preproc_outdir, subject_id, "xfm")
+            # BIDS-compliant anat directory
+            anat_dir = os.path.join(preproc_outdir, subject_id, "anat")
+            # Legacy directories for backward compatibility
+            anat_transforms_dir = os.path.join(
+                preproc_outdir, subject_id, "anat", "transforms"
+            )
+            transforms_dir = os.path.join(
+                preproc_outdir, subject_id, "preproc", "transforms"
+            )
+            preproc_dir = os.path.join(preproc_outdir, subject_id, "preproc")
+
+        # Determine file suffix based on modality - BEP014 compliant naming
         if modality == "T1w":
-            suffix = "from-T1w_to-MNI152_fwdaffine.mat"
+            bep014_filename = (
+                f"{fullid}_from-T1w_to-MNI152NLin2009aSym_mode-image_xfm.mat"
+            )
         elif modality == "FLAIR":
-            suffix = "from-FLAIR_to-MNI152_fwdaffine.mat"
+            bep014_filename = (
+                f"{fullid}_from-FLAIR_to-MNI152NLin2009aSym_mode-image_xfm.mat"
+            )
         else:
             logging.warning(f"Unknown modality: {modality}")
             return None
-            
-        # Construct expected file path - transform files are in preproc/transforms subdirectory
-        filename = f"{subject_id}_{session_id}_{suffix}"
-        filepath = os.path.join(preproc_outdir, subject_id, session_id, "preproc", "transforms", filename)
-        
-        # Check if file exists
-        if os.path.exists(filepath):
-            logging.info(f"Found transform {modality} file: {filepath}")
-            return filepath
-        else:
-            logging.debug(f"Transform {modality} file not found at: {filepath}")
-            return None
 
-    def _provide_diagnostic_guidance(self, subject_id: str, session_id: str, preproc_outdir: str):
+        # Try different file paths in order of preference
+        candidate_paths = [
+            # BIDS-compliant xfm directory with BEP014 naming
+            os.path.join(xfm_dir, bep014_filename),
+            # BIDS-compliant anat directory with BEP014 naming
+            os.path.join(anat_dir, bep014_filename),
+            # (legacy naming removed)
+            # Legacy anat/transforms directory with BEP014 naming
+            os.path.join(anat_transforms_dir, bep014_filename),
+            # (legacy naming removed)
+            # Legacy transforms directory with BEP014 naming
+            os.path.join(transforms_dir, bep014_filename),
+            # Legacy preproc directory with BEP014 naming
+            os.path.join(preproc_dir, bep014_filename),
+            # (legacy naming removed)
+        ]
+
+        for filepath in candidate_paths:
+            if os.path.exists(filepath):
+                logging.info(f"Found transform {modality} file: {filepath}")
+                return filepath
+
+        # Log all attempted paths for debugging
+        logging.debug(f"Transform {modality} file not found. Tried paths:")
+        for path in candidate_paths:
+            logging.debug(f"  - {path}")
+
+        return None
+
+    def _provide_diagnostic_guidance(
+        self, subject_id: str, session_id: str, preproc_outdir: str
+    ):
         """Provide diagnostic guidance when files are not found.
-        
+
         Args:
             subject_id: Subject identifier
             session_id: Session identifier
             preproc_outdir: Preprocessing output directory
         """
-        expected_dir = os.path.join(preproc_outdir, subject_id, session_id, "preproc")
-        
-        logging.error(f"Expected files not found for {subject_id}_{session_id}")
+        # session_id may be like 'ses-01' or None
+        if session_id and session_id not in ("None", "null"):
+            sess = (
+                session_id.replace("ses-", "")
+                if session_id.startswith("ses-")
+                else session_id
+            )
+            expected_dir = os.path.join(
+                preproc_outdir, subject_id, f"ses-{sess}", "preproc"
+            )
+            lookup_key = f"{subject_id}_ses-{sess}"
+        else:
+            expected_dir = os.path.join(preproc_outdir, subject_id, "preproc")
+            lookup_key = subject_id
+
+        logging.error(f"Expected files not found for {lookup_key}")
         logging.error(f"Expected directory: {expected_dir}")
-        
+
         if os.path.exists(expected_dir):
             files = os.listdir(expected_dir)
             logging.error(f"Available files in directory: {files}")
-            
+
             # Check for common naming variations
-            t1_variants = [f for f in files if "t1" in f.lower() and "brain" in f.lower()]
-            t2_variants = [f for f in files if "t2" in f.lower() and "brain" in f.lower()]
-            
+            t1_variants = [
+                f for f in files if "t1" in f.lower() and "brain" in f.lower()
+            ]
+            t2_variants = [
+                f for f in files if "t2" in f.lower() and "brain" in f.lower()
+            ]
+
             if t1_variants:
                 logging.error(f"Found T1 variants: {t1_variants}")
             if t2_variants:
                 logging.error(f"Found T2/FLAIR variants: {t2_variants}")
-                
         else:
             logging.error(f"Directory does not exist: {expected_dir}")
             # Check if parent directories exist
-            parent_dir = os.path.join(preproc_outdir, subject_id, session_id)
+            if session_id and session_id not in ("None", "null"):
+                sess = (
+                    session_id.replace("ses-", "")
+                    if session_id.startswith("ses-")
+                    else session_id
+                )
+                parent_dir = os.path.join(preproc_outdir, subject_id, f"ses-{sess}")
+            else:
+                parent_dir = os.path.join(preproc_outdir, subject_id)
+
             if os.path.exists(parent_dir):
-                subdirs = [d for d in os.listdir(parent_dir) if os.path.isdir(os.path.join(parent_dir, d))]
+                subdirs = [
+                    d
+                    for d in os.listdir(parent_dir)
+                    if os.path.isdir(os.path.join(parent_dir, d))
+                ]
                 logging.error(f"Available subdirectories in {parent_dir}: {subdirs}")
             else:
-                subject_dir = os.path.join(preproc_outdir, subject_id)
-                if os.path.exists(subject_dir):
-                    sessions = [d for d in os.listdir(subject_dir) if os.path.isdir(os.path.join(subject_dir, d))]
-                    logging.error(f"Available sessions for {subject_id}: {sessions}")
-                else:
-                    subjects = [d for d in os.listdir(preproc_outdir) if os.path.isdir(os.path.join(preproc_outdir, d))]
-                    logging.error(f"Available subjects in preprocessing directory: {subjects}")
+                subjects = [
+                    d
+                    for d in os.listdir(preproc_outdir)
+                    if os.path.isdir(os.path.join(preproc_outdir, d))
+                ]
+                logging.error(
+                    f"Available subjects in preprocessing directory: {subjects}"
+                )
 
 
 def create_argument_parser() -> argparse.ArgumentParser:
@@ -1279,8 +1630,12 @@ def main():
 
         logging.info("DeepFCD inference completed successfully!")
 
-    except Exception as e:
-        logging.error(f"Error during DeepFCD inference: {e}")
+    except Exception:
+        # The logging subsystem in the runtime may be misconfigured; print a full traceback
+        import traceback
+
+        print("Error during DeepFCD inference. Traceback:")
+        traceback.print_exc()
         sys.exit(1)
 
 

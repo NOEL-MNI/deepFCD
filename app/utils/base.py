@@ -1,4 +1,4 @@
-# %%
+import logging
 import json
 import os
 import time
@@ -10,14 +10,29 @@ import nibabel as nib
 import numpy as np
 import pandas as pd
 
-# Import BIDS metadata utilities
+# Import BIDS metadata utilities (try relative, package, and legacy locations)
 try:
-    from bids_metadata import generate_inference_bids_metadata
-except ImportError:
-    print("Warning: Could not import BIDS metadata utilities for inference. Metadata generation will be skipped.")
-    generate_inference_bids_metadata = None
+    # Try absolute package import first (when running from repo root)
+    from app.utils.bids_metadata import generate_inference_bids_metadata
+except Exception:
+    try:
+        # Preferred: relative import when running as a package
+        from .bids_metadata import generate_inference_bids_metadata
+    except Exception:
+        try:
+            # When executed from repository root or scripts: package import
+            from utils.bids_metadata import generate_inference_bids_metadata
+        except Exception:
+            try:
+                # Legacy/top-level module import fallback
+                from bids_metadata import generate_inference_bids_metadata
+            except Exception:
+                print(
+                    "Warning: Could not import BIDS metadata utilities for inference. Metadata generation will be skipped."
+                )
+                generate_inference_bids_metadata = None
 
-# %%
+
 from keras.callbacks import CSVLogger, EarlyStopping, LambdaCallback, ModelCheckpoint
 from keras.models import load_model
 from keras.utils.io_utils import HDF5Matrix
@@ -30,13 +45,12 @@ from utils.post_processor import *
 import re
 
 
-# %%
 def print_data_shape(X):
-    """ Print shape of the training data
+    """Print shape of the training data
 
     Args:
         X (_type_): numpy array with the 3D patches for T1w and FLAIR
-    """    
+    """
     print("====> # 3D training patches:", X.shape[0], "\n")
     print("====> # patch size:", (X.shape[2], X.shape[3], X.shape[4]), "\n")
     print("====> # modalities:", (X.shape[1]), "\n")
@@ -51,7 +65,7 @@ def partition_leave_one_site_out(datafile=None, test_site=None):
 
     Returns:
         _type_: _description_
-    """    
+    """
     data = pd.read_excel(datafile)
     ids = data["index"]
     groups = data["testing_dataset"].values
@@ -90,17 +104,22 @@ def load_dataset(datapath, options):
     train_val_split = options["train_split"]
     n_patches = HDF5Matrix(datapath, "labels").shape[0]
     # get the train and validation patch indices
-    start, end = [0, int(n_patches * (1 - train_val_split))], [
-        int(n_patches * (1 - train_val_split)),
-        n_patches,
-    ]
+    start, end = (
+        [0, int(n_patches * (1 - train_val_split))],
+        [
+            int(n_patches * (1 - train_val_split)),
+            n_patches,
+        ],
+    )
     # extract the training dataset w/ labels
-    X, y = HDF5Matrix(datapath, "data", start=start[0], end=end[0]), HDF5Matrix(
-        datapath, "labels", start=start[0], end=end[0]
+    X, y = (
+        HDF5Matrix(datapath, "data", start=start[0], end=end[0]),
+        HDF5Matrix(datapath, "labels", start=start[0], end=end[0]),
     )
     # extract the validation dataset w/ labels
-    X_val, y_val = HDF5Matrix(datapath, "data", start=start[1], end=end[1]), HDF5Matrix(
-        datapath, "labels", start=start[1], end=end[1]
+    X_val, y_val = (
+        HDF5Matrix(datapath, "data", start=start[1], end=end[1]),
+        HDF5Matrix(datapath, "labels", start=start[1], end=end[1]),
     )
     return X, y, X_val, y_val
 
@@ -158,7 +177,7 @@ def train_model(model, train_x_data, train_y_data, options):
         - trained model: list containing the two cascaded CNN models after training
     """
     batch_size = int(options["mini_batch_size"] / 2)
-    RAND = time.strftime("%a" "_" "%H_%M_%S")
+    RAND = time.strftime("%a_%H_%M_%S")
     net_logs = os.path.join(options["weight_paths"], "logs")
     if not os.path.exists(net_logs):
         os.mkdir(os.path.join(options["weight_paths"], "checkpoints"))
@@ -449,6 +468,12 @@ def test_scan(
     - test_scan = Output image containing the probability output segmentation
     - If save_nifti --> Saves a nii file at specified location options['test_folder']/['test_scan']
     """
+    # Normalize uncertainty parameter to a boolean to avoid callers passing None/invalid types
+    try:
+        uncertainty = bool(uncertainty)
+    except Exception:
+        uncertainty = False
+
     batch_size = options["mini_batch_size"]
     # get_scan name and create an empty nii image to store segmentation
     scans = test_x_data.keys()
@@ -477,6 +502,12 @@ def test_scan(
     ):
         if uncertainty:
             # predict uncertainty
+            if "predict_uncertainty" not in globals() or not callable(
+                predict_uncertainty
+            ):
+                raise RuntimeError(
+                    "predict_uncertainty is not available. Ensure utils.patch_dataloader.predict_uncertainty is importable."
+                )
             y_pred, y_pred_var = predict_uncertainty(
                 model, batch, batch_size=batch_size, T=T
             )
@@ -495,9 +526,23 @@ def test_scan(
         if uncertainty:
             out_scan = nib.Nifti1Image(var_image, affine=affine, header=header)
             out_scan.to_filename(options["test_var_name"])
-            
-        # Generate BIDS metadata for inference outputs
-        generate_inference_bids_metadata(options, uncertainty)
+
+        # Generate BIDS metadata for inference outputs (only if utilities are available)
+        try:
+            if callable(generate_inference_bids_metadata):
+                try:
+                    generate_inference_bids_metadata(options, uncertainty)
+                except Exception as _e:
+                    logging.warning(f"BIDS metadata generation failed: {_e}")
+            else:
+                logging.debug(
+                    "BIDS metadata utilities not available; skipping metadata generation"
+                )
+        except NameError:
+            # In case the symbol isn't defined for any reason, skip silently
+            logging.debug(
+                "BIDS metadata utilities symbol missing; skipping metadata generation"
+            )
 
     if transit is not None:
         if not os.path.exists(test_folder):
@@ -543,6 +588,12 @@ def test_model(
     invert_xfrm=True,
 ):
     outputs = {}
+    # Normalize uncertainty flag
+    try:
+        uncertainty = bool(uncertainty)
+    except Exception:
+        uncertainty = True if uncertainty is None else bool(uncertainty)
+
     threshold = options["th_dnn_train_2"]
     scan = options["test_scan"] + "_"
 
@@ -643,6 +694,13 @@ def test_model(
             skip = False
 
     if not skip:
+        logging.debug(f"About to run second CNN model for subject")
+        logging.debug(f"model[1] type: {type(model[1])}")
+        logging.debug(f"model[1] is None: {model[1] is None}")
+        if model[1] is None:
+            logging.error("model[1] is None when trying to run second CNN!")
+            raise ValueError("model[1] is None when trying to run second CNN!")
+
         pred_mean_1, pred_var_1, header = test_scan(
             model[1],
             test_x_data,
