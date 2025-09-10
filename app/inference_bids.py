@@ -1582,6 +1582,8 @@ def create_argument_parser() -> argparse.ArgumentParser:
         help="Overwrite existing prediction outputs",
     )
     parser.add_argument(
+        "--overwrite-pp",
+        "--overwrite-preproc",
         "--overwrite-preprocessing",
         action="store_true",
         default=False,
