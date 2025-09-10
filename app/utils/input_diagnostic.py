@@ -105,25 +105,25 @@ class DeepFCDInputDiagnostic:
         # Determine overall status and recommendations
         if len(found_preprocessed) == len(required_patterns):
             diagnosis["status"] = "ready"
-            diagnosis["recommendations"].append("✓ All required preprocessed files found. Ready for inference.")
+            diagnosis["recommendations"].append("All required preprocessed files found. Ready for inference.")
         elif len(missing_preprocessed) == len(required_patterns):
             diagnosis["status"] = "needs_preprocessing"
             if diagnosis["has_raw_t1"] and diagnosis["has_raw_flair"]:
                 diagnosis["recommendations"].extend([
-                    "❌ No preprocessed files found, but raw T1w and FLAIR images are available.",
-                    "🔧 Run preprocessing with: python app/inference_bids.py -bp <path> -pp -bm",
+                    "No preprocessed files found, but raw T1w and FLAIR images are available.",
+                    "Run preprocessing with: python app/inference_bids.py -bp <path> -pp -bm",
                     "   The -pp flag will automatically generate the required preprocessed files."
                 ])
             else:
                 diagnosis["recommendations"].extend([
-                    "❌ No preprocessed files found and missing raw images.",
-                    "📁 Check that your BIDS dataset contains T1w and FLAIR images."
+                    "No preprocessed files found and missing raw images.",
+                    "Check that your BIDS dataset contains T1w and FLAIR images."
                 ])
         else:
             diagnosis["status"] = "partial"
             diagnosis["recommendations"].extend([
-                f"⚠️  Only {len(found_preprocessed)}/{len(required_patterns)} required files found.",
-                "🔧 Re-run preprocessing to generate missing files."
+                f"Only {len(found_preprocessed)}/{len(required_patterns)} required files found.",
+                "Re-run preprocessing to generate missing files."
             ])
             
         return diagnosis

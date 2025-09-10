@@ -334,7 +334,7 @@ class DeepFCDPreprocessor:
             missing_modality: The modality that's missing (T1w or FLAIR)
         """
         print("\n" + "=" * 70)
-        print(f"🔍 DEEPFCD INPUT DIAGNOSTIC for {fullid}")
+        print(f"DeepFCD Input Diagnostics for {fullid}")
         print("=" * 70)
 
         # Parse subject and session
@@ -358,40 +358,40 @@ class DeepFCDPreprocessor:
                 self.inference.preproc_outdir, fullid, "preproc"
             )
 
-        print(f"❌ Missing: {missing_modality} preprocessed files for {fullid}")
-        print("📁 Expected location: {expected_dir}")
-        print("📄 Expected files:")
-        print(f"   • {expected_t1}")
-        print(f"   • {expected_t2}")
+        print(f"MISSING: {missing_modality} preprocessed files for {fullid}")
+        print("Expected location: {expected_dir}")
+        print("Expected files:")
+        print(f"   - {expected_t1}")
+        print(f"   - {expected_t2}")
 
         # Check what's actually available
-        print("\n🔍 Checking available files...")
+        print("\nChecking available files...")
 
         # Check if directory exists
         if os.path.exists(expected_dir):
             files_in_dir = os.listdir(expected_dir)
             if files_in_dir:
-                print(f"✓ Directory exists with {len(files_in_dir)} files:")
+                print(f"Directory exists with {len(files_in_dir)} files:")
                 for f in sorted(files_in_dir):
                     if f.endswith(".nii.gz"):
-                        print(f"   📄 {f}")
+                        print(f"   - {f}")
             else:
-                print("⚠️  Directory exists but is empty")
+                print("Directory exists but is empty")
         else:
-            print(f"❌ Expected directory does not exist: {expected_dir}")
+            print(f"Expected directory does not exist: {expected_dir}")
 
         # Check for raw files in original dataset
         self._check_raw_files_availability(subject_id, session_id)
 
         # Provide recommendations
-        print("\n💡 RECOMMENDATIONS:")
+        print("\nRECOMMENDATIONS:")
         print("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
 
         # Check if raw files are available
         raw_available = self._check_if_raw_files_exist(subject_id, session_id)
 
         if raw_available["has_t1"] and raw_available["has_flair"]:
-            print("🔧 SOLUTION: Raw T1w and FLAIR images found. Run preprocessing:")
+            print("SOLUTION: Raw T1w and FLAIR images found. Run preprocessing:")
             print("")
             print("   python app/inference_bids.py \\")
             print(f"       -bp {self.inference.args.bids_path} \\")
@@ -402,7 +402,7 @@ class DeepFCDPreprocessor:
             print("   The -pp flag will automatically generate the required files.")
 
         elif raw_available["has_t1"] or raw_available["has_flair"]:
-            print("⚠️  PARTIAL DATA: Only some raw images found")
+            print("PARTIAL DATA: Only some raw images found")
             missing_modalities = []
             if not raw_available["has_t1"]:
                 missing_modalities.append("T1w")
@@ -410,11 +410,11 @@ class DeepFCDPreprocessor:
                 missing_modalities.append("FLAIR")
 
             print(f"   Missing: {', '.join(missing_modalities)}")
-            print("   📋 Check your BIDS dataset structure")
+            print("   Check your BIDS dataset structure")
 
         else:
-            print("❌ NO RAW DATA: No T1w or FLAIR images found in original dataset")
-            print("   📋 Required BIDS structure:")
+            print("NO RAW DATA: No T1w or FLAIR images found in original dataset")
+            print("   Required BIDS structure:")
             print(f"   {self.inference.args.bids_path}/")
             if session_id:
                 print(f"   ├── {subject_id}/")
@@ -428,9 +428,9 @@ class DeepFCDPreprocessor:
                 print(f"   │       ├── {fullid}_T1w.nii.gz")
                 print(f"   │       └── {fullid}_FLAIR.nii.gz")
 
-        print("\n📚 For more information:")
-        print("   • Input requirements: docs/input_requirements.md")
-        print("   • BIDS specification: https://bids-specification.readthedocs.io/")
+        print("\nFor more information:")
+        print("   - Input requirements: docs/input_requirements.md")
+        print("   - BIDS specification: https://bids-specification.readthedocs.io/")
         print("=" * 70 + "\n")
 
     def _check_raw_files_availability(
@@ -453,16 +453,16 @@ class DeepFCDPreprocessor:
         t1_files = self.inference.orig_ds.get(suffix="T1w", **query)
         flair_files = self.inference.orig_ds.get(suffix="FLAIR", **query)
 
-        print("📊 Raw file availability:")
+        print("Raw file availability:")
         if t1_files:
-            print(f"   ✓ T1w: {t1_files[0].path}")
+            print(f"   T1w: {t1_files[0].path}")
         else:
-            print("   ❌ T1w: Not found")
+            print("   T1w: Not found")
 
         if flair_files:
-            print(f"   ✓ FLAIR: {flair_files[0].path}")
+            print(f"   FLAIR: {flair_files[0].path}")
         else:
-            print("   ❌ FLAIR: Not found")
+            print("   FLAIR: Not found")
 
     def _check_if_raw_files_exist(
         self, subject_id: str, session_id: Optional[str]
