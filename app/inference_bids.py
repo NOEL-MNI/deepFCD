@@ -64,8 +64,23 @@ class DeepFCDInference:
 
     def _setup_logging(self):
         """Configure logging settings."""
+        # Allow runtime control of logging level via environment variable
+        # (DEEPFCD_LOGLEVEL) or the command-line debug flag (args.debug).
+        # Default to INFO to avoid verbose debug output.
+        env_level = os.environ.get("DEEPFCD_LOGLEVEL")
+        if hasattr(self.args, "debug") and getattr(self.args, "debug"):
+            level = logging.DEBUG
+        else:
+            if env_level:
+                try:
+                    level = getattr(logging, env_level.upper())
+                except Exception:
+                    level = logging.INFO
+            else:
+                level = logging.INFO
+
         logging.basicConfig(
-            level=logging.DEBUG,
+            level=level,
             style="{",
             datefmt="%Y-%m-%d %H:%M:%S",
             format="{asctime} {levelname} {filename}:{lineno}: {message}",
@@ -361,7 +376,7 @@ class DeepFCDPreprocessor:
                     if f.endswith(".nii.gz"):
                         print(f"   📄 {f}")
             else:
-                print(f"⚠️  Directory exists but is empty")
+                print("⚠️  Directory exists but is empty")
         else:
             print(f"❌ Expected directory does not exist: {expected_dir}")
 
@@ -1593,6 +1608,12 @@ def create_argument_parser() -> argparse.ArgumentParser:
         nargs="+",
         default=None,
         help="List of subjects to process (default: all). Can include session info like sub-001_ses-01",
+    )
+    parser.add_argument(
+        "--debug",
+        action="store_true",
+        default=False,
+        help="Enable debug logging output",
     )
 
     return parser
