@@ -487,6 +487,15 @@ class DeepFCDPreprocessor:
             )
             return
 
+        # Import preprocess_image only when brain masking and pre-processing is enabled
+        try:
+            from preprocess_bids import preprocess_image
+        except ImportError:
+            logging.error(
+                "preprocess_image function is not available. Cannot perform preprocessing."
+            )
+            raise ImportError("preprocess_image function could not be imported from preprocess_bids")
+
         # Get subject-session mapping
         subject_sessions = self.inference.get_subject_sessions(self.inference.orig_ds)
 
@@ -585,7 +594,7 @@ class DeepFCDPreprocessor:
                 indir_=self.inference.args.bidspath,
                 outdir_=self.inference.preproc_outdir,
                 preprocess=self.inference.args.preprocess,
-                use_gpu=use_gpu,
+                use_gpu=0, # prefer CPU for parallel preprocessing
             ),
             fullids,
             t1w_paths,
@@ -854,20 +863,6 @@ class DeepFCDProcessor:
 
         # Prepare data structures
         files = [t1_file, t2_file]
-
-        if self.inference.args.preprocess and self.inference.args.brainmask:
-            try:
-                from preprocess_bids import preprocess_image
-            except Exception:
-                logging.exception(
-                    "Failed to import preprocess_image for preprocessing step"
-                )
-                raise
-        else:
-            logging.info(
-                "DeepMask preprocessing not requested; proceeding to inference using existing preprocessed outputs"
-            )
-            preprocess_image = None
 
         transform_files = [t1_transform, t2_transform]
 
