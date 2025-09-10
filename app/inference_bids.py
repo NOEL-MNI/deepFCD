@@ -509,7 +509,9 @@ class DeepFCDPreprocessor:
             logging.error(
                 "preprocess_image function is not available. Cannot perform preprocessing."
             )
-            raise ImportError("preprocess_image function could not be imported from preprocess_bids")
+            raise ImportError(
+                "preprocess_image function could not be imported from preprocess_bids"
+            )
 
         # Get subject-session mapping
         subject_sessions = self.inference.get_subject_sessions(self.inference.orig_ds)
@@ -609,7 +611,7 @@ class DeepFCDPreprocessor:
                 indir_=self.inference.args.bidspath,
                 outdir_=self.inference.preproc_outdir,
                 preprocess=self.inference.args.preprocess,
-                use_gpu=0, # prefer CPU for parallel preprocessing
+                use_gpu=0,  # prefer CPU for parallel preprocessing
             ),
             fullids,
             t1w_paths,
