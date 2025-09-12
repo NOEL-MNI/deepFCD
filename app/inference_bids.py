@@ -259,32 +259,19 @@ class DeepFCDPreprocessor:
                 f"ses-{session_part}",
                 "anat",
             )
-            # Legacy preproc directory for backward compatibility
-            preproc_dir = os.path.join(
-                self.inference.preproc_outdir,
-                subject_part,
-                f"ses-{session_part}",
-                "preproc",
-            )
         else:
             anat_dir = os.path.join(self.inference.preproc_outdir, fullid, "anat")
-            # Legacy preproc directory for backward compatibility
-            preproc_dir = os.path.join(self.inference.preproc_outdir, fullid, "preproc")
 
         # Expected output files - try BIDS-compliant anat directory first, then legacy preproc
         expected_files_anat = [
-            os.path.join(anat_dir, f"{fullid}_space-MNI152_T1w_final.nii.gz"),
-            os.path.join(anat_dir, f"{fullid}_space-MNI152_FLAIR_final.nii.gz"),
+            os.path.join(anat_dir, f"{fullid}_space-MNI152_T1w_brain.nii.gz"),
+            os.path.join(anat_dir, f"{fullid}_space-MNI152_FLAIR_brain.nii.gz"),
         ]
 
         # Also check for brain extracted versions and legacy preproc directory
         alternative_files = [
-            os.path.join(anat_dir, f"{fullid}_space-MNI152_T1w_brain.nii.gz"),
-            os.path.join(anat_dir, f"{fullid}_space-MNI152_FLAIR_brain.nii.gz"),
-            os.path.join(preproc_dir, f"{fullid}_space-MNI152_T1w_final.nii.gz"),
-            os.path.join(preproc_dir, f"{fullid}_space-MNI152_FLAIR_final.nii.gz"),
-            os.path.join(preproc_dir, f"{fullid}_space-MNI152_T1w_brain.nii.gz"),
-            os.path.join(preproc_dir, f"{fullid}_space-MNI152_FLAIR_brain.nii.gz"),
+            os.path.join(anat_dir, f"{fullid}_space-MNI152_T1w.nii.gz"),
+            os.path.join(anat_dir, f"{fullid}_space-MNI152_FLAIR.nii.gz"),
         ]
 
         # Check if all files exist (primary or alternative)
@@ -292,7 +279,7 @@ class DeepFCDPreprocessor:
         # Check T1w files (try anat first, then alternatives)
         t1_found = False
         for t1_file in [expected_files_anat[0]] + [
-            alternative_files[i] for i in [0, 2, 4]
+            alternative_files[0]  # T1w brain final
         ]:
             if os.path.isfile(t1_file):
                 files_found.append(t1_file)
@@ -302,7 +289,7 @@ class DeepFCDPreprocessor:
         # Check FLAIR files (try anat first, then alternatives)
         flair_found = False
         for flair_file in [expected_files_anat[1]] + [
-            alternative_files[i] for i in [1, 3, 5]
+            alternative_files[1]  # FLAIR brain final
         ]:
             if os.path.isfile(flair_file):
                 files_found.append(flair_file)
@@ -346,17 +333,15 @@ class DeepFCDPreprocessor:
 
         # Expected file patterns
         expected_t1 = f"{fullid}_space-MNI152_T1w_brain.nii.gz"
-        expected_t2 = f"{fullid}_space-MNI152_FLAIR_brain.nii.gz"
+        expected_t2 = f"{fullid}_space-MNI152_FLAIR_brainnii.gz"
 
         # Expected directory
         if session_id:
             expected_dir = os.path.join(
-                self.inference.preproc_outdir, subject_id, session_id, "preproc"
+                self.inference.preproc_outdir, subject_id, session_id, "anat"
             )
         else:
-            expected_dir = os.path.join(
-                self.inference.preproc_outdir, fullid, "preproc"
-            )
+            expected_dir = os.path.join(self.inference.preproc_outdir, fullid, "anat")
 
         print(f"MISSING: {missing_modality} preprocessed files for {fullid}")
         print("Expected location: {expected_dir}")
@@ -536,11 +521,17 @@ class DeepFCDPreprocessor:
                     query_params["session"] = session
 
                 try:
-                    t1w_file = self.inference.orig_ds.get(**query_params)[0]
+                    t1w_files = self.inference.orig_ds.get(**query_params)
+                    if not t1w_files:
+                        raise IndexError("No T1w files found")
+                    t1w_file = t1w_files[0]
 
                     # Update query for FLAIR
                     query_params["suffix"] = "FLAIR"
-                    flair_file = self.inference.orig_ds.get(**query_params)[0]
+                    flair_files = self.inference.orig_ds.get(**query_params)
+                    if not flair_files:
+                        raise IndexError("No FLAIR files found")
+                    flair_file = flair_files[0]
 
                     # Create appropriate full ID
                     if session is not None:
@@ -550,13 +541,13 @@ class DeepFCDPreprocessor:
 
                     # Check if preprocessing outputs already exist
                     if self._check_preprocessing_outputs_exist(fullid):
-                        if self.inference.args.overwrite_preprocessing:
+                        if self.inference.args.overwrite_pp:
                             logging.info(
-                                f"Preprocessing outputs exist for {fullid}, but --overwrite-preprocessing specified"
+                                f"Preprocessing outputs exist for {fullid}, but --overwrite-pp specified"
                             )
                         else:
                             logging.info(
-                                f"Skipping preprocessing for {fullid} (outputs already exist, use --overwrite-preprocessing to force)"
+                                f"Skipping preprocessing for {fullid} (outputs already exist, use --overwrite-pp to force)"
                             )
                             skipped_subjects.append(fullid)
                             continue
@@ -1331,47 +1322,28 @@ class DeepFCDProcessor:
             fullid = f"{subject_id}_ses-{sess}"
             # BIDS-compliant anat directory
             anat_dir = os.path.join(preproc_outdir, subject_id, f"ses-{sess}", "anat")
-            # Legacy preproc directory for backward compatibility
-            preproc_dir = os.path.join(
-                preproc_outdir, subject_id, f"ses-{sess}", "preproc"
-            )
         else:
             fullid = subject_id
             # BIDS-compliant anat directory
             anat_dir = os.path.join(preproc_outdir, subject_id, "anat")
-            # Legacy preproc directory for backward compatibility
-            preproc_dir = os.path.join(preproc_outdir, subject_id, "preproc")
 
         # Determine file suffix based on modality - using actual preprocessing output naming
         if modality == "T1w":
-            actual_filename = f"{fullid}_space-MNI152_T1w_final.nii.gz"
+            actual_filename = f"{fullid}_space-MNI152_T1w.nii.gz"
             brain_filename = f"{fullid}_space-MNI152_T1w_brain.nii.gz"
-            bids_filename = f"{fullid}_space-MNI152NLin2009aSym_label-brain_T1w.nii.gz"
         elif modality == "FLAIR":
-            actual_filename = f"{fullid}_space-MNI152_FLAIR_final.nii.gz"
+            actual_filename = f"{fullid}_space-MNI152_FLAIR.nii.gz"
             brain_filename = f"{fullid}_space-MNI152_FLAIR_brain.nii.gz"
-            bids_filename = (
-                f"{fullid}_space-MNI152NLin2009aSym_label-brain_FLAIR.nii.gz"
-            )
         else:
             logging.warning(f"Unknown modality: {modality}")
             return None
 
         # Try different file paths in order of preference
         candidate_paths = [
+            # BIDS-compliant anat directory with brain extracted naming (preferred)
+            os.path.join(anat_dir, brain_filename),
             # BIDS-compliant anat directory with actual preprocessing naming
             os.path.join(anat_dir, actual_filename),
-            # BIDS-compliant anat directory with brain extracted naming
-            os.path.join(anat_dir, brain_filename),
-            # BIDS-compliant anat directory with BIDS naming
-            os.path.join(anat_dir, bids_filename),
-            # Legacy preproc directory with actual preprocessing naming (for backward compatibility)
-            os.path.join(preproc_dir, actual_filename),
-            # Legacy preproc directory with brain extracted naming
-            os.path.join(preproc_dir, brain_filename),
-            # Legacy preproc directory with BIDS naming
-            os.path.join(preproc_dir, bids_filename),
-            # (legacy/fallback names removed intentionally)
         ]
 
         for filepath in candidate_paths:
@@ -1413,40 +1385,18 @@ class DeepFCDProcessor:
             xfm_dir = os.path.join(preproc_outdir, subject_id, f"ses-{sess}", "xfm")
             # BIDS-compliant anat directory
             anat_dir = os.path.join(preproc_outdir, subject_id, f"ses-{sess}", "anat")
-            # Legacy directories for backward compatibility
-            anat_transforms_dir = os.path.join(
-                preproc_outdir, subject_id, f"ses-{sess}", "anat", "transforms"
-            )
-            transforms_dir = os.path.join(
-                preproc_outdir, subject_id, f"ses-{sess}", "preproc", "transforms"
-            )
-            preproc_dir = os.path.join(
-                preproc_outdir, subject_id, f"ses-{sess}", "preproc"
-            )
         else:
             fullid = subject_id
             # BIDS-compliant xfm directory at subject level
             xfm_dir = os.path.join(preproc_outdir, subject_id, "xfm")
             # BIDS-compliant anat directory
             anat_dir = os.path.join(preproc_outdir, subject_id, "anat")
-            # Legacy directories for backward compatibility
-            anat_transforms_dir = os.path.join(
-                preproc_outdir, subject_id, "anat", "transforms"
-            )
-            transforms_dir = os.path.join(
-                preproc_outdir, subject_id, "preproc", "transforms"
-            )
-            preproc_dir = os.path.join(preproc_outdir, subject_id, "preproc")
 
         # Determine file suffix based on modality - BEP014 compliant naming
         if modality == "T1w":
-            bep014_filename = (
-                f"{fullid}_from-T1w_to-MNI152NLin2009aSym_mode-image_xfm.mat"
-            )
+            bep014_filename = f"{fullid}_from-T1w_to-MNI152_mode-image_xfm.mat"
         elif modality == "FLAIR":
-            bep014_filename = (
-                f"{fullid}_from-FLAIR_to-MNI152NLin2009aSym_mode-image_xfm.mat"
-            )
+            bep014_filename = f"{fullid}_from-FLAIR_to-MNI152_mode-image_xfm.mat"
         else:
             logging.warning(f"Unknown modality: {modality}")
             return None
@@ -1457,15 +1407,6 @@ class DeepFCDProcessor:
             os.path.join(xfm_dir, bep014_filename),
             # BIDS-compliant anat directory with BEP014 naming
             os.path.join(anat_dir, bep014_filename),
-            # (legacy naming removed)
-            # Legacy anat/transforms directory with BEP014 naming
-            os.path.join(anat_transforms_dir, bep014_filename),
-            # (legacy naming removed)
-            # Legacy transforms directory with BEP014 naming
-            os.path.join(transforms_dir, bep014_filename),
-            # Legacy preproc directory with BEP014 naming
-            os.path.join(preproc_dir, bep014_filename),
-            # (legacy naming removed)
         ]
 
         for filepath in candidate_paths:
@@ -1498,11 +1439,11 @@ class DeepFCDProcessor:
                 else session_id
             )
             expected_dir = os.path.join(
-                preproc_outdir, subject_id, f"ses-{sess}", "preproc"
+                preproc_outdir, subject_id, f"ses-{sess}", "anat"
             )
             lookup_key = f"{subject_id}_ses-{sess}"
         else:
-            expected_dir = os.path.join(preproc_outdir, subject_id, "preproc")
+            expected_dir = os.path.join(preproc_outdir, subject_id, "anat")
             lookup_key = subject_id
 
         logging.error(f"Expected files not found for {lookup_key}")

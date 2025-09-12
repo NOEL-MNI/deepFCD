@@ -1,16 +1,13 @@
 import os
 from argparse import ArgumentDefaultsHelpFormatter, ArgumentParser
-from posixpath import isabs
 
 import psutil
 import torch
 from mo_dots import to_data
 
-import deepMask.app.vnet as vnet
-
-# from deepMask.app.utils.data import *
-# from deepMask.app.utils.deepmask import *
-from deepMask.app.utils.image_processing import noelImageProcessor
+from deepMask import vnet
+from deepMask.utils.image_processing import noelImageProcessor
+import deepMask
 
 
 def preprocess_image(id_, t1_fname, t2_fname, indir_, outdir_, preprocess, use_gpu):
@@ -37,16 +34,20 @@ def preprocess_image(id_, t1_fname, t2_fname, indir_, outdir_, preprocess, use_g
         t2 = os.path.join(indir_, id_, "anat", t2_fname)
     else:
         t2 = t2_fname
+
+    # Check if input files exist
+    if not os.path.exists(t1):
+        raise FileNotFoundError(f"T1 file not found: {t1}")
+    if not os.path.exists(t2):
+        raise FileNotFoundError(f"T2/FLAIR file not found: {t2}")
+
     args = to_data({})  # this is really dumb but the code needs it...
     args.seed = 666
 
-    cwd = os.path.dirname(__file__)
-
-    # trained weights based on manually corrected masks from
-    # 153 patients with cortical malformations
-    args.inference = os.path.join(
-        cwd, "deepMask/app/weights", "vnet_masker_model_best.pth.tar"
-    )
+    # locate package assets inside installed deepMask package
+    pkg_dir = os.path.dirname(deepMask.__file__)
+    # trained weights based on manually corrected masks
+    args.inference = os.path.join(pkg_dir, "weights", "vnet_masker_model_best.pth.tar")
     # resize all input images to this resolution matching training data
     args.resize = (160, 160, 160)
     args.cuda = torch.cuda.is_available() and use_gpu
@@ -75,24 +76,55 @@ def preprocess_image(id_, t1_fname, t2_fname, indir_, outdir_, preprocess, use_g
         model = vnet.build_model(args)
 
     template = os.path.join(
-        cwd, "deepMask/app/template", "mni_icbm152_t1_tal_nlin_sym_09a.nii.gz"
+        pkg_dir, "template", "mni_icbm152_t1_tal_nlin_sym_09a.nii.gz"
     )
 
     # MRI pre-processing configuration
-    output_suffix = "_brain_final.nii.gz"
+    output_suffix = "_brain.nii.gz"
 
-    noelImageProcessor(
-        id=id_,
-        t1=t1,
-        t2=t2,
-        output_suffix=output_suffix,
-        output_dir=outdir,
-        template=template,
-        usen3=True,
-        args=args,
-        model=model,
-        preprocess=preprocess,
-    ).pipeline()
+    try:
+        noelImageProcessor(
+            id=id_,
+            t1=t1,
+            t2=t2,
+            output_suffix=output_suffix,
+            output_dir=outdir,
+            template=template,
+            usen3=True,
+            args=args,
+            model=model,
+            preprocess=preprocess,
+        ).pipeline()
+    except ValueError as e:
+        if "images do not occupy same physical space" in str(e):
+            print(
+                f"Warning: T1 and FLAIR images for {id_} are not in the same physical space."
+            )
+            print(
+                "Attempting to process with T1 only (skipping FLAIR brain masking)..."
+            )
+
+            # Try processing with T1 only by setting t2 to None or empty
+            try:
+                noelImageProcessor(
+                    id=id_,
+                    t1=t1,
+                    t2=None,  # Skip FLAIR processing
+                    output_suffix=output_suffix,
+                    output_dir=outdir,
+                    template=template,
+                    usen3=True,
+                    args=args,
+                    model=model,
+                    preprocess=preprocess,
+                ).pipeline()
+                print(f"Successfully processed {id_} with T1 only.")
+            except Exception as e2:
+                print(f"Error processing {id_} even with T1 only: {e2}")
+                raise e2
+        else:
+            # Re-raise the original error if it's not the spatial mismatch issue
+            raise e
 
 
 if __name__ == "__main__":
