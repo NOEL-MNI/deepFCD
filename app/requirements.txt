@@ -1,3 +1,4 @@
+--extra-index-url https://download.pytorch.org/whl/cpu
 antspyx==0.4.2 --only-binary=antspyx
 atlasreader @ git+https://github.com/ravnoor/atlasreader@master
 Theano==1.0.4
