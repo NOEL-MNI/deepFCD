@@ -83,6 +83,27 @@ conda deactivate
 
 ```
 
+## BIDS Input Requirements
+### BIDS-compliant input data is now supported for inference
+
+deepFCD requires preprocessed T1w and FLAIR images (`*_space-MNI152_T1w_brain_final.nii.gz`, `*_space-MNI152_FLAIR_brain_final.nii.gz`). 
+See [docs/input_requirements.md](docs/input_requirements.md) for detailed input specifications and BIDS compliance information.
+
+***run***
+```
+python app/inference_bids.py -bp <bids directory> -sp <space> -dev cuda -pp -bm
+```
+
+***install***
+```bash
+conda env create -f environment.yml
+
+conda activate deepfcd
+
+pip install -r app/deepMask/app/requirements.txt
+
+pip install -r app/requirements.txt
+```
 
 ## Usage
 

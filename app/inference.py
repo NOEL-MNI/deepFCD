@@ -33,9 +33,9 @@ os.environ["KERAS_BACKEND"] = "theano"
 options["cuda"] = sys.argv[5]
 # cpu, cuda, cuda0, cuda1, or cudaX: flag using gpu 1 or 2
 if options["cuda"].startswith("cuda1"):
-    os.environ[
-        "THEANO_FLAGS"
-    ] = "mode=FAST_RUN,device=cuda1,floatX=float32,dnn.enabled=False"
+    os.environ["THEANO_FLAGS"] = (
+        "mode=FAST_RUN,device=cuda1,floatX=float32,dnn.enabled=False"
+    )
 elif options["cuda"].startswith("cpu"):
     cores = str(multiprocessing.cpu_count() // 2)
     var = os.getenv("OMP_NUM_THREADS", cores)
@@ -49,7 +49,9 @@ elif options["cuda"].startswith("cpu"):
     # os.environ['openmp'] = 'True'
     os.environ["THEANO_FLAGS"] = "mode=FAST_RUN,device=cpu,openmp=True,floatX=float32"
 else:
-    os.environ["THEANO_FLAGS"] = "mode=FAST_RUN,device=cuda0,floatX=float32,dnn.enabled=False"
+    os.environ["THEANO_FLAGS"] = (
+        "mode=FAST_RUN,device=cuda0,floatX=float32,dnn.enabled=False"
+    )
 logging.info(os.environ["THEANO_FLAGS"])
 
 from keras import backend as K
@@ -76,6 +78,9 @@ args.outdir = os.path.join(args.dir, args.id)
 
 args.t1 = os.path.join(args.outdir, args.t1_fname)
 args.t2 = os.path.join(args.outdir, args.t2_fname)
+
+orig_files = {"T1": args.t1, "FLAIR": args.t2}
+
 
 args.t1_orig, args.t2_orig = args.t1, args.t2
 
@@ -105,6 +110,8 @@ if bool(args.brain_masking):
     args.t1 = os.path.join(args.outdir, args.id + "_t1" + args.output_suffix)
     args.t2 = os.path.join(args.outdir, args.id + "_t2" + args.output_suffix)
 else:
+    args.t1 = os.path.join(args.dir, args.t1_fname)
+    args.t2 = os.path.join(args.dir, args.t2_fname)
     logging.info(
         "Skipping image preprocessing and brain masking, presumably images are co-registered, bias-corrected, and skull-stripped"
     )
@@ -126,9 +133,9 @@ modalities = ["T1", "FLAIR"]
 x_names = options["x_names"]
 
 # seed = options['seed']
-options["dropout_mc"] = True
-options["batch_size"] = 350000
-options["mini_batch_size"] = 2048
+options["dropout_mc"] = False  # TODO
+options["batch_size"] = 1000000
+options["mini_batch_size"] = 8000
 options["load_checkpoint_1"] = True
 options["load_checkpoint_2"] = True
 
@@ -150,20 +157,20 @@ model = off_the_shelf_model(options)
 load_weights = os.path.join(
     options["weight_paths"], "noel_deepFCD_dropoutMC_model_1.h5"
 )
-logging.info(
-    "loading DNN1, model[0]: {} exists".format(load_weights)
-) if os.path.isfile(load_weights) else sys.exit(
-    "model[0]: {} doesn't exist".format(load_weights)
+(
+    logging.info("loading DNN1, model[0]: {} exists".format(load_weights))
+    if os.path.isfile(load_weights)
+    else sys.exit("model[0]: {} doesn't exist".format(load_weights))
 )
 model[0] = load_model(load_weights)
 
 load_weights = os.path.join(
     options["weight_paths"], "noel_deepFCD_dropoutMC_model_2.h5"
 )
-logging.info(
-    "loading DNN2, model[1]: {} exists".format(load_weights)
-) if os.path.isfile(load_weights) else sys.exit(
-    "model[1]: {} doesn't exist".format(load_weights)
+(
+    logging.info("loading DNN2, model[1]: {} exists".format(load_weights))
+    if os.path.isfile(load_weights)
+    else sys.exit("model[1]: {} doesn't exist".format(load_weights))
 )
 model[1] = load_model(load_weights)
 logging.info(model[1].summary())
@@ -235,13 +242,20 @@ for _, scan in enumerate(
     logging.info("-" * 70)
 
     # if transform(s) do not exist (i.e., no preprocessing done), then skip (see base.py#L412)
-    if not any([os.path.exists(transforms[scan]["T1"]), os.path.exists(transforms[scan]["FLAIR"])]):
+    if not any(
+        [
+            os.path.exists(transforms[scan]["T1"]),
+            os.path.exists(transforms[scan]["FLAIR"]),
+        ]
+    ):
         transforms = None
 
     test_model(
         model,
         t_data,
         options,
+        performance=True,
+        uncertainty=True,
         transforms=transforms,
         orig_files=orig_files,
         invert_xfrm=True,

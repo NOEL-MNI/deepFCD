@@ -38,24 +38,25 @@ RUN wget https://github.com/conda-forge/miniforge/releases/download/${MINIFORGE_
     && bash Miniforge3-${MINIFORGE_VERSION}-Linux-x86_64.sh -b -p "${HOME}/conda" \
     && rm Miniforge3-${MINIFORGE_VERSION}-Linux-x86_64.sh
 
-RUN git clone --depth 1 https://github.com/NOEL-MNI/deepMask.git \
-    && rm -rf deepMask/.git
-
-RUN eval "$(conda shell.bash hook)" \
-    && conda create -n preprocess python=3.8 \
-    && conda activate preprocess \
-    && python -m pip install -r deepMask/app/requirements.txt \
-    && conda deactivate
-
+# copy requirements early for better layer caching
 COPY app/requirements.txt /app/requirements.txt
 
+# create conda environment
 RUN eval "$(conda shell.bash hook)" \
-    && conda create -n deepFCD -c conda-forge python=3.8.20 pygpu==0.7.6 \
+    && conda create -n deepFCD -c conda-forge python=3.8.20 pygpu==0.7.6 pyyaml\<6.0 \
+    && conda clean -a -y
+
+# install pip packages in separate layer
+RUN eval "$(conda shell.bash hook)" \
     && conda activate deepFCD \
-    && python -m pip install -r /app/requirements.txt \
+    && python -m pip install --no-cache-dir -r /app/requirements.txt \
     && conda deactivate
 
-RUN pip cache purge
+# clean up caches
+RUN eval "$(conda shell.bash hook)" \
+    && conda activate deepFCD \
+    && conda clean -a -y \
+    && python -m pip cache purge
 
 COPY app/ /app/
 

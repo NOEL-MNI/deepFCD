@@ -67,14 +67,20 @@ def post_processing(input_scan, options, header, save_nifti=True):
     # save the output segmentation as nifti
     if save_nifti:
         nii_out = nib.Nifti1Image(output_scan, affine=header.get_qform(), header=header)
-        nii_out.to_filename(os.path.join(options["pred_folder"], options["test_name"]))
+        maskpath = os.path.join(
+            options["pred_folder"],
+            f"{options['fullid']}_space-MNI152NLin2009aSym_acq-{options['experiment']}Postproc_mask.nii.gz",
+        )
+        nii_out.to_filename(maskpath)
         labels_out = nib.Nifti1Image(
             labels_scan, affine=header.get_qform(), header=header
         )
-        labels_out.to_filename(
-            os.path.join(options["pred_folder"], options["test_morph_name"])
+        labelpath = os.path.join(
+            options["pred_folder"],
+            f"{options['fullid']}_space-MNI152NLin2009aSym_acq-{options['experiment']}Postproc_label.nii.gz",
         )
-    return output_scan, pred_labels, count
+        labels_out.to_filename(labelpath)
+    return maskpath, labelpath, count
 
 
 def extract_lesional_clus(label, input_scan, scan, options):

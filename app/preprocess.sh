@@ -27,7 +27,7 @@ PWD=$(dirname "$0")
 
 conda=${CONDA_EXE}
 eval "$(conda shell.bash hook)"
-conda activate preprocess
+conda activate deepfcd
 # echo $CONDA_PREFIX
 
 if [ ${PREPROCESSING} -eq 1 ] && [ ${USE_GPU} -eq 0 ]; then

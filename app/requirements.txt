@@ -1,5 +1,5 @@
 antspyx==0.4.2 --only-binary=antspyx
-git+https://github.com/ravnoor/atlasreader@master#egg=atlasreader
+atlasreader @ git+https://github.com/ravnoor/atlasreader@master
 Theano==1.0.4
 keras==2.2.4
 h5py==2.10.0
@@ -17,3 +17,6 @@ setproctitle==1.2.3
 tabulate==0.9.0
 tqdm==4.65.0
 xlrd==2.0.1
+pybids==0.17.2
+PyYAML<6.0
+deepMask[cpu] @ git+https://github.com/NOEL-MNI/deepMask.git@bids-dev

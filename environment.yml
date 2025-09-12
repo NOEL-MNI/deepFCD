@@ -1,0 +1,11 @@
+name: deepFCD
+channels:
+  - conda-forge
+  - defaults
+dependencies:
+  - python=3.8.20
+  - pygpu==0.7.6
+  - pyyaml<6.0
+  - pip>=24.3.1,<25.0.0
+  - pip:
+    - -r app/requirements.txt
