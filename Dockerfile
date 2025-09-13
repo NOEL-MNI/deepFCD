@@ -58,11 +58,10 @@ RUN eval "$(conda shell.bash hook)" \
     && conda clean -a -y \
     && python -m pip cache purge
 
-COPY app/ /app/
+# copy app code with proper ownership
+COPY --chown=user:user --chmod=755 app/ /app/
 
-COPY tests/ /tests/
-
-RUN sudo chmod -R 777 /app && sudo chmod +x /app/inference.py
+COPY --chown=user:user tests/ /tests/
 
 ENTRYPOINT ["conda", "run", "--no-capture-output", "-n", "deepFCD"]
 
