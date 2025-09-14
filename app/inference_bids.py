@@ -62,6 +62,9 @@ class DeepFCDInference:
         # Load BIDS datasets
         self._load_datasets()
 
+        # Initialize basic options needed for preprocessing checks
+        self._initialize_basic_options()
+
     def _setup_logging(self):
         """Configure logging settings."""
         # Allow runtime control of logging level via environment variable
@@ -185,8 +188,34 @@ class DeepFCDInference:
         if self.args.subjects is None:
             subjects = dataset.get_subjects()
         else:
-            subjects = [s.replace("sub-", "") for s in self.args.subjects]
+            # Parse subjects from subject-session specifications
+            subject_session_specs = self.parse_subject_session_specs()
+            subjects = list(subject_session_specs.keys())
         return subjects
+
+    def parse_subject_session_specs(self) -> Dict[str, List[str]]:
+        """Parse subject-session specifications from command line arguments.
+
+        Returns:
+            Dictionary mapping subject IDs to list of requested session IDs (or [None] for all sessions)
+        """
+        if self.args.subjects is None:
+            return {}
+
+        subject_session_specs = {}
+        for s in self.args.subjects:
+            # Remove 'sub-' prefix if present
+            s_clean = s.replace("sub-", "")
+            if "_ses-" in s_clean:
+                subject_id, session_id = s_clean.split("_ses-", 1)
+                if subject_id not in subject_session_specs:
+                    subject_session_specs[subject_id] = []
+                subject_session_specs[subject_id].append(session_id)
+            else:
+                # No session specified, include all sessions for this subject
+                subject_session_specs[s_clean] = None
+
+        return subject_session_specs
 
     def get_subject_sessions(self, dataset: BIDSLayout) -> Dict[str, List[str]]:
         """Get sessions for each subject.
@@ -197,37 +226,83 @@ class DeepFCDInference:
         Returns:
             Dictionary mapping subject IDs to list of session IDs
         """
-        subjects = self.get_subjects(dataset)
-        subject_sessions = {}
+        # Get subject-session specifications from command line
+        subject_session_specs = self.parse_subject_session_specs()
 
-        for subject in subjects:
-            raw_sessions = dataset.get_sessions(subject=subject)
-            norm_sessions = []
-            if raw_sessions:
-                for s in raw_sessions:
-                    # Convert pybids NullType or other non-string values to None
-                    if s is None:
-                        norm_sessions.append(None)
-                        continue
-                    try:
-                        s_str = s if isinstance(s, str) else str(s)
-                    except Exception:
-                        norm_sessions.append(None)
-                        continue
-                    s_clean = s_str.strip()
-                    if s_clean == "" or s_clean.lower() in ("none", "null"):
-                        norm_sessions.append(None)
+        if subject_session_specs:
+            # Use specified subjects and sessions
+            subject_sessions = {}
+            for subject_id, requested_sessions in subject_session_specs.items():
+                if requested_sessions is None:
+                    # Get all sessions for this subject
+                    raw_sessions = dataset.get_sessions(subject=subject_id)
+                    norm_sessions = []
+                    if raw_sessions:
+                        for s in raw_sessions:
+                            if s is None:
+                                norm_sessions.append(None)
+                                continue
+                            try:
+                                s_str = s if isinstance(s, str) else str(s)
+                            except Exception:
+                                norm_sessions.append(None)
+                                continue
+                            s_clean = s_str.strip()
+                            if s_clean == "" or s_clean.lower() in ("none", "null"):
+                                norm_sessions.append(None)
+                            else:
+                                if s_clean.startswith("ses-"):
+                                    s_clean = s_clean.replace("ses-", "")
+                                norm_sessions.append(s_clean)
+                        subject_sessions[subject_id] = norm_sessions
                     else:
-                        # strip leading 'ses-' if present, keep the bare session id
-                        if s_clean.startswith("ses-"):
-                            s_clean = s_clean.replace("ses-", "")
-                        norm_sessions.append(s_clean)
-                subject_sessions[subject] = norm_sessions
-            else:
-                # If no sessions, use None to indicate no session structure
-                subject_sessions[subject] = [None]
+                        subject_sessions[subject_id] = [None]
+                else:
+                    # Use only requested sessions
+                    subject_sessions[subject_id] = requested_sessions
+            return subject_sessions
+        else:
+            # Original logic for when no specific subjects are requested
+            subjects = self.get_subjects(dataset)
+            subject_sessions = {}
 
-        return subject_sessions
+            for subject in subjects:
+                raw_sessions = dataset.get_sessions(subject=subject)
+                norm_sessions = []
+                if raw_sessions:
+                    for s in raw_sessions:
+                        # Convert pybids NullType or other non-string values to None
+                        if s is None:
+                            norm_sessions.append(None)
+                            continue
+                        try:
+                            s_str = s if isinstance(s, str) else str(s)
+                        except Exception:
+                            norm_sessions.append(None)
+                            continue
+                        s_clean = s_str.strip()
+                        if s_clean == "" or s_clean.lower() in ("none", "null"):
+                            norm_sessions.append(None)
+                        else:
+                            # strip leading 'ses-' if present, keep the bare session id
+                            if s_clean.startswith("ses-"):
+                                s_clean = s_clean.replace("ses-", "")
+                            norm_sessions.append(s_clean)
+                    subject_sessions[subject] = norm_sessions
+                else:
+                    # If no sessions, use None to indicate no session structure
+                    subject_sessions[subject] = [None]
+
+            return subject_sessions
+
+    def _initialize_basic_options(self):
+        """Initialize basic options needed before model setup."""
+        # Import options from config
+        from config.experiment import options
+
+        # Set basic options needed for preprocessing checks
+        options["MNI152space"] = "MNI152"
+        options["deepFCD_label"] = "deepFCD"
 
 
 class DeepFCDPreprocessor:
@@ -262,24 +337,36 @@ class DeepFCDPreprocessor:
         else:
             anat_dir = os.path.join(self.inference.preproc_outdir, fullid, "anat")
 
+        logging.debug(f"Checking preprocessing outputs for {fullid} in {anat_dir}")
+
         # Expected output files - try BIDS-compliant anat directory first, then legacy preproc
         expected_files_anat = [
-            os.path.join(anat_dir, f"{fullid}_space-MNI152_T1w_brain.nii.gz"),
-            os.path.join(anat_dir, f"{fullid}_space-MNI152_FLAIR_brain.nii.gz"),
+            os.path.join(
+                anat_dir, f"{fullid}_space-{options['MNI152space']}_T1w_brain.nii.gz"
+            ),
+            os.path.join(
+                anat_dir, f"{fullid}_space-{options['MNI152space']}_FLAIR_brain.nii.gz"
+            ),
         ]
 
         # Also check for brain extracted versions and legacy preproc directory
         alternative_files = [
-            os.path.join(anat_dir, f"{fullid}_space-MNI152_T1w.nii.gz"),
-            os.path.join(anat_dir, f"{fullid}_space-MNI152_FLAIR.nii.gz"),
+            os.path.join(
+                anat_dir, f"{fullid}_space-{options['MNI152space']}_T1w.nii.gz"
+            ),
+            os.path.join(
+                anat_dir, f"{fullid}_space-{options['MNI152space']}_FLAIR.nii.gz"
+            ),
         ]
+
+        logging.debug(f"Expected files: {expected_files_anat + alternative_files}")
 
         # Check if all files exist (primary or alternative)
         files_found = []
         # Check T1w files (try anat first, then alternatives)
         t1_found = False
         for t1_file in [expected_files_anat[0]] + [
-            alternative_files[0]  # T1w brain final
+            alternative_files[0],  # T1w
         ]:
             if os.path.isfile(t1_file):
                 files_found.append(t1_file)
@@ -289,7 +376,7 @@ class DeepFCDPreprocessor:
         # Check FLAIR files (try anat first, then alternatives)
         flair_found = False
         for flair_file in [expected_files_anat[1]] + [
-            alternative_files[1]  # FLAIR brain final
+            alternative_files[1],  # FLAIR
         ]:
             if os.path.isfile(flair_file):
                 files_found.append(flair_file)
@@ -332,8 +419,10 @@ class DeepFCDPreprocessor:
             subject_id, session_id = fullid, None
 
         # Expected file patterns
-        expected_t1 = f"{fullid}_space-MNI152_T1w_brain.nii.gz"
-        expected_t2 = f"{fullid}_space-MNI152_FLAIR_brainnii.gz"
+        expected_t1 = f"{fullid}_space-{options['MNI152space']}_T1w_brain.nii.gz"
+        expected_t2 = f"{fullid}_space-{options['MNI152space']}_FLAIR_brain.nii.gz"
+        expected_t1_alt = f"{fullid}_space-{options['MNI152space']}_T1w.nii.gz"
+        expected_t2_alt = f"{fullid}_space-{options['MNI152space']}_FLAIR.nii.gz"
 
         # Expected directory
         if session_id:
@@ -348,6 +437,9 @@ class DeepFCDPreprocessor:
         print("Expected files:")
         print(f"   - {expected_t1}")
         print(f"   - {expected_t2}")
+        print("   Or without _brain suffix:")
+        print(f"   - {expected_t1_alt}")
+        print(f"   - {expected_t2_alt}")
 
         # Check what's actually available
         print("\nChecking available files...")
@@ -677,8 +769,6 @@ class DeepFCDModel:
         logging.info(f"test_folder: {options['test_folder']}")
         logging.info(f"outdir: {self.inference.outdir}")
         logging.info(f"bidspath: {self.inference.args.bidspath}")
-
-        options["MNI152space"] = "MNI152"
 
         # Validate critical paths
         if options["test_folder"] is None:
@@ -1147,11 +1237,11 @@ class DeepFCDProcessor:
 
         pred_mean_fname = os.path.join(
             options["pred_folder"],
-            f"{base_filename}_probseg-mean.nii.gz",
+            f"{base_filename}_stat-mean1_probseg.nii.gz",
         )
         pred_var_fname = os.path.join(
             options["pred_folder"],
-            f"{base_filename}_probseg-var.nii.gz",
+            f"{base_filename}_stat-mean1_probseg.nii.gz",
         )
         return pred_mean_fname, pred_var_fname
 
@@ -1182,7 +1272,7 @@ class DeepFCDProcessor:
         ):
             logging.info("prediction for {} already exists".format(options["fullid"]))
             if not self.inference.args.overwrite:
-                targetspace = "T1w"
+                targetspace = "orig"
                 if "space" in orig_bidsfiles[0].entities:
                     targetspace = orig_bidsfiles[0].entities["space"]
 
@@ -1251,7 +1341,7 @@ class DeepFCDProcessor:
         logging.debug(f"About to call test_model_func: {test_model_func}")
         logging.info(f"Pred folder for {fullid}: {options.get('pred_folder')}")
         logging.info(
-            f"Planned output names: mean={os.path.join(options.get('pred_folder', ''), options.get('fullid', '') + '_space-' + options.get('MNI152space', '') + '_probseg-mean.nii.gz')}"
+            f"Planned output names: mean={os.path.join(options.get('pred_folder', ''), options.get('fullid', '') + '_space-' + options.get('MNI152space', '') + '_stat-mean1_probseg.nii.gz')}"
         )
         if test_model_func is None:
             logging.error(f"test_model_func is None for {fullid}")
@@ -1272,9 +1362,7 @@ class DeepFCDProcessor:
 
         # Transform outputs back to original space
         for k, v in outputs.items():
-            targetspace = None
-            if "space" in orig_bidsfiles[0].entities:
-                targetspace = orig_bidsfiles[0].entities["space"]
+            targetspace = "orig"  # Always use "orig" to indicate original/native space
 
             logging.debug(f"About to call transform_img_func: {transform_img_func}")
             if transform_img_func is None:
@@ -1329,11 +1417,13 @@ class DeepFCDProcessor:
 
         # Determine file suffix based on modality - using actual preprocessing output naming
         if modality == "T1w":
-            actual_filename = f"{fullid}_space-MNI152_T1w.nii.gz"
-            brain_filename = f"{fullid}_space-MNI152_T1w_brain.nii.gz"
+            actual_filename = f"{fullid}_space-{options['MNI152space']}_T1w.nii.gz"
+            brain_filename = f"{fullid}_space-{options['MNI152space']}_T1w_brain.nii.gz"
         elif modality == "FLAIR":
-            actual_filename = f"{fullid}_space-MNI152_FLAIR.nii.gz"
-            brain_filename = f"{fullid}_space-MNI152_FLAIR_brain.nii.gz"
+            actual_filename = f"{fullid}_space-{options['MNI152space']}_FLAIR.nii.gz"
+            brain_filename = (
+                f"{fullid}_space-{options['MNI152space']}_FLAIR_brain.nii.gz"
+            )
         else:
             logging.warning(f"Unknown modality: {modality}")
             return None
@@ -1394,9 +1484,13 @@ class DeepFCDProcessor:
 
         # Determine file suffix based on modality - BEP014 compliant naming
         if modality == "T1w":
-            bep014_filename = f"{fullid}_from-T1w_to-MNI152_mode-image_xfm.mat"
+            bep014_filename = (
+                f"{fullid}_from-T1w_to-{options['MNI152space']}_mode-image_xfm.mat"
+            )
         elif modality == "FLAIR":
-            bep014_filename = f"{fullid}_from-FLAIR_to-MNI152_mode-image_xfm.mat"
+            bep014_filename = (
+                f"{fullid}_from-FLAIR_to-{options['MNI152space']}_mode-image_xfm.mat"
+            )
         else:
             logging.warning(f"Unknown modality: {modality}")
             return None

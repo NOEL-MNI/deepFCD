@@ -601,22 +601,22 @@ def test_model(
     # flair_scans = [test_x_data[s]["FLAIR"] for s in scans]
     # header = load_nii(flair_scans[0]).header
 
-    if not options["pipeline"]:
-        options["pipeline"] = options["experiment"]
+    if not options["deepFCD_label"]:
+        options["deepFCD_label"] = options["experiment"]
 
     # organize experiments
     # first network
     options["test_name"] = os.path.join(
         options["pred_folder"],
-        f"{options['fullid']}_space-{options['MNI152space']}_label-{options['pipeline']}0_pred.nii.gz",
+        f"{options['fullid']}_space-{options['MNI152space']}_desc-{options['deepFCD_label']}-0_pred.nii.gz",
     )
     options["test_mean_name"] = os.path.join(
         options["pred_folder"],
-        f"{options['fullid']}_space-{options['MNI152space']}_label-{options['pipeline']}Mean0_probseg.nii.gz",
+        f"{options['fullid']}_space-{options['MNI152space']}_desc-{options['deepFCD_label']}_stat-mean0_probseg.nii.gz",
     )
     options["test_var_name"] = os.path.join(
         options["pred_folder"],
-        f"{options['fullid']}_space-{options['MNI152space']}_label-{options['pipeline']}Var0_probseg.nii.gz",
+        f"{options['fullid']}_space-{options['MNI152space']}_desc-{options['deepFCD_label']}_stat-var0_probseg.nii.gz",
     )
     pred_var_0_img = None
     pred_var_1_img = None
@@ -664,15 +664,15 @@ def test_model(
     # second network
     options["test_name"] = os.path.join(
         options["pred_folder"],
-        f"{options['fullid']}_space-{options['MNI152space']}_label-{options['experiment']}1_probseg.nii.gz",
+        f"{options['fullid']}_space-{options['MNI152space']}_desc-{options['experiment']}-1_probseg.nii.gz",
     )
     options["test_mean_name"] = os.path.join(
         options["pred_folder"],
-        f"{options['fullid']}_space-{options['MNI152space']}_label-{options['experiment']}Mean1_probseg.nii.gz",
+        f"{options['fullid']}_space-{options['MNI152space']}_desc-{options['deepFCD_label']}_stat-mean1_probseg.nii.gz",
     )
     options["test_var_name"] = os.path.join(
         options["pred_folder"],
-        f"{options['fullid']}_space-{options['MNI152space']}_label-{options['experiment']}Var1_probseg.nii.gz",
+        f"{options['fullid']}_space-{options['MNI152space']}_desc-{options['deepFCD_label']}_stat-var1_probseg.nii.gz",
     )
 
     skip = False
@@ -694,7 +694,7 @@ def test_model(
             skip = False
 
     if not skip:
-        logging.debug(f"About to run second CNN model for subject")
+        logging.debug("About to run second CNN model for subject")
         logging.debug(f"model[1] type: {type(model[1])}")
         logging.debug(f"model[1] is None: {model[1] is None}")
         if model[1] is None:

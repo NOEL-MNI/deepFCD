@@ -62,5 +62,5 @@ options['weight_paths'] = None
 # randomize training features before fitting the model.
 options['randomize_train'] = True
 
-options["pipeline"] = "deepFCD" # consistent naming for BIDS inference outputs
+options["deepFCD_label"] = "deepFCD" # consistent naming for BIDS inference outputs
 options['MNI152space'] = "MNI152NLin2009aSym"

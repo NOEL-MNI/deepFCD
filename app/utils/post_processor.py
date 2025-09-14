@@ -69,7 +69,7 @@ def post_processing(input_scan, options, header, save_nifti=True):
         nii_out = nib.Nifti1Image(output_scan, affine=header.get_qform(), header=header)
         maskpath = os.path.join(
             options["pred_folder"],
-            f"{options['fullid']}_space-MNI152NLin2009aSym_acq-{options['experiment']}Postproc_mask.nii.gz",
+            f"{options['fullid']}_space-{options['MNI152space']}_desc-{options['deepFCD_label']}-postproc_mask.nii.gz",
         )
         nii_out.to_filename(maskpath)
         labels_out = nib.Nifti1Image(
@@ -77,7 +77,7 @@ def post_processing(input_scan, options, header, save_nifti=True):
         )
         labelpath = os.path.join(
             options["pred_folder"],
-            f"{options['fullid']}_space-MNI152NLin2009aSym_acq-{options['experiment']}Postproc_label.nii.gz",
+            f"{options['fullid']}_space-{options['MNI152space']}_desc-{options['deepFCD_label']}-postproc_label.nii.gz",
         )
         labels_out.to_filename(labelpath)
     return maskpath, labelpath, count

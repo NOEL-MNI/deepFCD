@@ -66,8 +66,8 @@ class DeepFCDInputDiagnostic:
         
         # Check for required preprocessed files
         required_patterns = [
-            f"{fullid}_space-MNI152_T1w_brain_final.nii.gz",
-            f"{fullid}_space-MNI152_FLAIR_brain_final.nii.gz"
+            f"{fullid}_space-MNI152_T1w_brain.nii.gz",
+            f"{fullid}_space-MNI152_FLAIR_brain.nii.gz"
         ]
         
         # Look in expected preprocessing output directory
