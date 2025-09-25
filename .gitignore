@@ -7,3 +7,4 @@ memray*.bin
 memray*.html
 .vscode
 .env
+output/*
