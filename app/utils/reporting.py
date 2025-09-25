@@ -6,9 +6,10 @@
 
 Usage:
     conda activate deepFCD
-    python3 reporting.py ${PATIENT_ID} ${IO_DIRECTORY}
+    python3 reporting.py ${PATIENT_ID} ${IO_DIRECTORY} [--p_thr PROB_THRESH] [--c_thr CLUSTER_SIZE]
 """
 
+import argparse
 import os
 import sys
 
@@ -21,9 +22,18 @@ from tabulate import tabulate
 from atlasreader.atlasreader import read_atlas_peak
 from confidence import extractLesionCluster
 
-scan = sys.argv[1]
+# parse command line arguments
+parser = argparse.ArgumentParser(description='Rank clusters based on probability/size thresholding and uncertainty')
+parser.add_argument('patient_id', help='Patient ID')
+parser.add_argument('io_directory', help='Input/Output directory')
+parser.add_argument('--p_thr', '--prob_thr', type=float, default=0.7, help='Probability threshold (default: 0.7)')
+parser.add_argument('--c_thr', '--clus_thr', type=int, default=300, help='Cluster size threshold (default: 300)')
+
+args = parser.parse_args()
+
+scan = args.patient_id
 options = {}
-options["data_folder"] = os.path.join(sys.argv[2], scan, "noel_deepFCD_dropoutMC")
+options["data_folder"] = os.path.join(args.io_directory, scan, "noel_deepFCD_dropoutMC")
 
 modality = [
     "_noel_deepFCD_dropoutMC_prob_mean_1.nii.gz",
@@ -32,6 +42,7 @@ modality = [
 data_bayes, data_bayes_var = {}, {}
 
 cwd = os.path.realpath(os.path.dirname(__file__))
+
 # mask to exclude all subcortical findings
 options["submask"] = os.path.join(cwd, "../templates", "subcortical_mask_v3.nii.gz")
 
@@ -44,8 +55,8 @@ ea_var = load_nii(data_bayes_var[scan]).get_fdata()
 
 options["header"] = load_nii(data_bayes[scan]).header
 
-options["t_bin"] = 0.7  # probability thresh old
-options["l_min"] = 300  # cluster size threshold
+options["t_bin"] = args.p_thr  # probability threshold from CLI args
+options["l_min"] = args.c_thr  # cluster size threshold from CLI args
 
 scan_keys = []
 
@@ -59,8 +70,6 @@ header = load_nii(data_bayes[scan]).header
 affine = header.get_qform()
 out_scan = nib.Nifti1Image(output_scan, affine=affine, header=header)
 
-# print(results)
-# results.drop([11], inplace=True)
 results.sort_values("rank")
 min_max_scaler = preprocessing.MinMaxScaler()
 invert_var = 1 / results["var"]
@@ -75,10 +84,7 @@ for N in np.arange(0, len(ranked_results.coords)):
     label = read_atlas_peak(
         atlastype="harvard_oxford", coordinate=ranked_results.coords[N], prob_thresh=5
     )
-    # for (perc, l) in label[0]:
-    #     print(perc, l)
     labels.append(label[0][1])
-    # print(label[0])
 
 ranked_results["region"] = labels
 
@@ -88,10 +94,6 @@ ranked_results["probability"] = ranked_results["probability"].apply(
 ranked_results["confidence"] = ranked_results["confidence"].apply(
     lambda x: int(round(x))
 )
-
-# ranked_results["coords"] = ranked_results["coords"].str.replace(" ", "")
-
-# print(tabulate(ranked_results[["confidence", "coords", "probability", "rank", "var", "region"]], headers = 'keys', tablefmt = 'plain', showindex = False))
 
 # remove spaces and square brackets from coordinates
 ranked_results["coords"] = ranked_results["coords"].apply(
@@ -105,10 +107,10 @@ print(
     )
 )
 
-t_bin = options["t_bin"]
-l_min = options["l_min"]
-csv_file = os.path.join(options["data_folder"], f"ranked_results_{scan}-pthr_{t_bin}-cthr_{l_min}.csv")
+p_thr = options["t_bin"]
+c_thr = options["l_min"]
+csv_file = os.path.join(options["data_folder"], f"ranked_results_{scan}-pthr_{p_thr}-cthr_{c_thr}.csv")
 ranked_results[cols_pref].to_csv(csv_file, index=False)
 # ranked_results[cols_pref].to_csv(f"ranked_results_{scan}.csv", index=False)
 
-nib.save(out_scan, os.path.join(options["data_folder"], scan + f"_clusters-pthr_{t_bin}-cthr_{l_min}.nii.gz"))
+nib.save(out_scan, os.path.join(options["data_folder"], scan + f"_clusters-pthr_{p_thr}-cthr_{c_thr}.nii.gz"))
