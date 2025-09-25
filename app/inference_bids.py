@@ -1241,7 +1241,7 @@ class DeepFCDProcessor:
         )
         pred_var_fname = os.path.join(
             options["pred_folder"],
-            f"{base_filename}_stat-mean1_probseg.nii.gz",
+            f"{base_filename}_stat-var1_probseg.nii.gz",
         )
         return pred_mean_fname, pred_var_fname
 
