@@ -1235,6 +1235,14 @@ class DeepFCDProcessor:
         # Create BIDS-compliant filenames for predictions
         base_filename = f"{fullid}_space-{options['MNI152space']}_desc-deepFCD"
 
+        # pred_suffix = ["mean0_probseg", "var0_probseg", "mean1_probseg", "var1_probseg"]
+        # pred_paths = []
+        # for preds in pred_suffix:
+        #     pred_path = os.path.join(
+        #         options["pred_folder"], f"{base_filename}_stat-{preds}.nii.gz"
+        #     )
+        #     pred_paths.append(pred_path)
+        #     logging.debug(f"Expected prediction file: {pred_path}")
         pred_mean_fname = os.path.join(
             options["pred_folder"],
             f"{base_filename}_stat-mean1_probseg.nii.gz",
@@ -1272,25 +1280,22 @@ class DeepFCDProcessor:
         ):
             logging.info("prediction for {} already exists".format(options["fullid"]))
             if not self.inference.args.overwrite:
-                targetspace = "orig"
-                if "space" in orig_bidsfiles[0].entities:
-                    targetspace = orig_bidsfiles[0].entities["space"]
-
+                # Transform existing predictions to original space
                 transform_img_func(
                     pred_mean_fname,
                     bids.layout.parse_file_entities(pred_mean_fname),
                     orig_files[0],
                     transform_files[0],
-                    targetspace=targetspace,
                     invert=True,
+                    targetspace="orig",
                 )
                 transform_img_func(
                     pred_var_fname,
                     bids.layout.parse_file_entities(pred_var_fname),
                     orig_files[0],
                     transform_files[0],
-                    targetspace=targetspace,
                     invert=True,
+                    targetspace="orig",
                 )
                 return True
             else:
@@ -1351,7 +1356,6 @@ class DeepFCDProcessor:
             self.model_handler.model,
             t_data,
             options,
-            performance=True,
             uncertainty=True,
             transforms=transforms,
             orig_files=orig_files,
@@ -1359,23 +1363,30 @@ class DeepFCDProcessor:
         )
 
         logging.info(f"test_model returned outputs: {list(outputs.keys())}")
+        logging.info(f"test_model outputs details: {outputs}")
 
         # Transform outputs back to original space
         for k, v in outputs.items():
-            targetspace = "orig"  # Always use "orig" to indicate original/native space
+            logging.info(f"Processing output key: {k}, file: {v}")
+            logging.debug(f"Original file space entity: {orig_bidsfiles[0].entities.get('space', 'None')}")
 
             logging.debug(f"About to call transform_img_func: {transform_img_func}")
             if transform_img_func is None:
                 logging.error(f"transform_img_func is None for {fullid}")
                 raise ValueError(f"transform_img_func is None for {fullid}")
 
+            # Parse entities from the prediction file
+            pred_entities = bids.layout.parse_file_entities(v)
+            logging.info(f"Prediction file: {v}")
+            logging.info(f"Prediction file entities: {pred_entities}")
+
             transform_img_func(
                 v,
-                bids.layout.parse_file_entities(v),
+                pred_entities,
                 orig_files[0],
                 transform_files[0],
-                targetspace=targetspace,
                 invert=True,
+                targetspace="orig",
             )
 
         end = time.time()

@@ -422,11 +422,15 @@ def transform_img(
     bidsfileentities,
     origfilepath,
     transformpath,
-    targetspace=None,
     invert=False,
     interpolation="nearestneighbor",
+    targetspace="orig",
 ):
-    print(f"writing data transformed to the {targetspace} space")
+    if targetspace is not None:
+        print(f"writing data transformed to the {targetspace} space")
+    else:
+        print("writing data transformed (removing space entity)")
+    
     t = ants.read_transform(transformpath)
     if invert:
         t = t.invert()
@@ -439,10 +443,28 @@ def transform_img(
         reference=origimg,
         interpolation=interpolation,
     )
+    
+    # Handle targetspace parameter gracefully
     if targetspace is None:
-        outname = bidsfilepath.replace(f"_space-{bidsfileentities['space']}", "")
+        # Remove space entity entirely if it exists
+        if 'space' in bidsfileentities:
+            outname = bidsfilepath.replace(f"_space-{bidsfileentities['space']}", "")
+        else:
+            outname = bidsfilepath  # No space entity to remove
     else:
-        outname = bidsfilepath.replace(bidsfileentities["space"], targetspace)
+        # Replace or add space entity
+        if 'space' in bidsfileentities:
+            outname = bidsfilepath.replace(f"_space-{bidsfileentities['space']}", f"_space-{targetspace}")
+        else:
+            # Insert space entity before the last underscore (before suffix)
+            parts = bidsfilepath.split('_')
+            if len(parts) >= 2:
+                parts.insert(-1, f"space-{targetspace}")
+                outname = '_'.join(parts)
+            else:
+                outname = bidsfilepath  # Fallback if filename structure is unexpected
+    
+    print(f"DEBUG: Output file: {outname}")
     img_t.to_filename(outname)
 
 
@@ -581,11 +603,11 @@ def test_model(
     model,
     test_x_data,
     options,
-    performance=False,
     uncertainty=True,
     transforms=None,
     orig_files=None,
     invert_xfrm=True,
+    performance=False,
 ):
     outputs = {}
     # Normalize uncertainty flag
@@ -683,6 +705,7 @@ def test_model(
 
     if skip and uncertainty:
         if os.path.isfile(options["test_var_name"]):
+            logging.info(f"Loading existing var1 file: {options['test_var_name']}")
             pred_var_1 = nib.load(options["test_var_name"]).get_data()
             header = nib.load(options["test_var_name"]).header
             pred_var_1_img = nifti2ants(
@@ -690,7 +713,9 @@ def test_model(
                 affine=None,
                 header=header,
             )
+            logging.info(f"Created pred_var_1_img: {pred_var_1_img is not None}")
         else:
+            logging.info(f"Var1 file not found, will generate: {options['test_var_name']}")
             skip = False
 
     if not skip:
@@ -712,14 +737,20 @@ def test_model(
         )
 
         pred_var_1_img = nifti2ants(pred_var_1, affine=None, header=header)
+        logging.info(f"Generated new pred_var_1_img: {pred_var_1_img is not None}")
 
     # pred_mean_1_img = nifti2ants(pred_mean_1, affine=header.get_qform(), header=header)
     # pred_mean_1_img = nifti2ants(pred_mean_1, affine=None, header=header)
     # outputs['pred_mean_1_img'] = pred_mean_1_img
     outputs["pred_mean_1_path"] = options["test_mean_name"]
+    logging.info(f"Added pred_mean_1_path to outputs: {options['test_mean_name']}")
 
+    logging.info(f"pred_var_1_img is None: {pred_var_1_img is None}")
     if pred_var_1_img is not None:
         outputs["pred_var_1_path"] = options["test_var_name"]
+        logging.info(f"Added pred_var_1_path to outputs: {options['test_var_name']}")
+    else:
+        logging.warning("pred_var_1_img is None, not adding pred_var_1_path to outputs")
 
     if performance:
         # postprocess the output segmentation
