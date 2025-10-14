@@ -33,6 +33,162 @@ transform_img = None
 warnings.filterwarnings("ignore")
 
 
+def _parallel_inference_worker(args_tuple):
+    """Worker function for parallel GPU inference.
+    
+    This function must be defined at module level for multiprocessing to work.
+    Each worker processes a single subject-session on an assigned GPU.
+    
+    Args:
+        args_tuple: Tuple containing:
+            - subject_id: Subject identifier
+            - session_id: Session identifier (or None)
+            - fullid: Full BIDS identifier string
+            - gpu_device: GPU device string to use
+            - bids_root: BIDS dataset root directory
+            - derivatives_dir: Derivatives directory path
+            - preproc_outdir: Preprocessing output directory
+            - outdir: Inference output directory
+            - model_path: Path to trained model
+            - inference_args: Original inference arguments namespace
+    
+    Returns:
+        bool: True if successful, False otherwise
+    """
+    import os
+    import logging
+    from pathlib import Path
+    import nibabel as nib
+    import numpy as np
+    from utils.env import set_theano_flags
+    from bids import BIDSLayout
+    
+    (subject_id, session_id, fullid, gpu_device, bids_root, derivatives_dir,
+     preproc_outdir, outdir, model_path, inference_args) = args_tuple
+    
+    try:
+        # Set up GPU device for this worker
+        os.environ["KERAS_BACKEND"] = "theano"
+        set_theano_flags(gpu_device)
+        
+        # Import here to ensure each process gets its own model instance
+        from keras import backend as K
+        from models.model import load_model, off_the_shelf_model, test_model
+        from utils.base import transform_img
+        
+        logging.info(f"Worker processing {fullid} on {gpu_device}")
+        
+        # Load BIDS layouts
+        orig_ds = BIDSLayout(bids_root, validate=False, derivatives=False)
+        
+        # Check for derivatives directory
+        if derivatives_dir and os.path.exists(derivatives_dir):
+            proc_ds = BIDSLayout(derivatives_dir, validate=False, derivatives=False)
+        else:
+            proc_ds = None
+        
+        # Load model
+        model = load_model(model_path)
+        
+        # Helper functions to get file paths (simplified versions)
+        def get_preprocessed_file(modality, subject, session):
+            """Get preprocessed file path for a given modality."""
+            subject = subject.replace('sub-', '')
+            if session:
+                session = session.replace('ses-', '')
+                session_str = f"ses-{session}"
+            else:
+                session_str = ""
+                
+            # Try BIDS root first (files with MNI152-space naming)
+            bids_paths = []
+            if session:
+                bids_paths.append(Path(bids_root) / f"sub-{subject}" / session_str / "anat" / 
+                                 f"sub-{subject}_{session_str}_MNI152-space_{modality}_normalized.nii.gz")
+            else:
+                bids_paths.append(Path(bids_root) / f"sub-{subject}" / "anat" / 
+                                 f"sub-{subject}_MNI152-space_{modality}_normalized.nii.gz")
+            
+            # Try preprocessing derivatives
+            if proc_ds:
+                deriv_paths = []
+                if session:
+                    deriv_paths.append(Path(derivatives_dir) / f"sub-{subject}" / session_str / "anat" /
+                                      f"sub-{subject}_{session_str}_space-MNI152_{modality}_brain.nii.gz")
+                    deriv_paths.append(Path(derivatives_dir) / f"sub-{subject}" / session_str / "anat" /
+                                      f"sub-{subject}_{session_str}_space-MNI152_{modality}.nii.gz")
+                else:
+                    deriv_paths.append(Path(derivatives_dir) / f"sub-{subject}" / "anat" /
+                                      f"sub-{subject}_space-MNI152_{modality}_brain.nii.gz")
+                    deriv_paths.append(Path(derivatives_dir) / f"sub-{subject}" / "anat" /
+                                      f"sub-{subject}_space-MNI152_{modality}.nii.gz")
+                bids_paths.extend(deriv_paths)
+            
+            # Return first existing file
+            for path in bids_paths:
+                if path.exists():
+                    return str(path)
+            
+            return None
+        
+        # Get file paths for both modalities
+        t1_path = get_preprocessed_file("T1w", subject_id, session_id)
+        flair_path = get_preprocessed_file("FLAIR", subject_id, session_id)
+        
+        if not t1_path or not flair_path:
+            logging.error(f"Missing preprocessed files for {fullid}")
+            return False
+        
+        # Load images
+        t1_img = nib.load(t1_path).get_fdata()
+        flair_img = nib.load(flair_path).get_fdata()
+        
+        # Reshape for model input
+        t1_img = t1_img.reshape((1,) + t1_img.shape + (1,))
+        flair_img = flair_img.reshape((1,) + flair_img.shape + (1,))
+        
+        # Run inference
+        data = [t1_img, flair_img]
+        prediction = test_model(model, data)
+        
+        # Save output
+        subject_clean = subject_id.replace('sub-', '')
+        if session_id:
+            session_clean = session_id.replace('ses-', '')
+            output_filename = f"sub-{subject_clean}_ses-{session_clean}_space-MNI152_label-FCD_probseg.nii.gz"
+            subject_outdir = Path(outdir) / f"sub-{subject_clean}" / f"ses-{session_clean}" / "anat"
+        else:
+            output_filename = f"sub-{subject_clean}_space-MNI152_label-FCD_probseg.nii.gz"
+            subject_outdir = Path(outdir) / f"sub-{subject_clean}" / "anat"
+        
+        subject_outdir.mkdir(parents=True, exist_ok=True)
+        output_path = subject_outdir / output_filename
+        
+        # Load reference image for header
+        ref_img = nib.load(t1_path)
+        
+        # Squeeze prediction and save
+        prediction_img = nib.Nifti1Image(
+            np.squeeze(prediction),
+            affine=ref_img.affine,
+            header=ref_img.header
+        )
+        nib.save(prediction_img, str(output_path))
+        
+        logging.info(f"Worker finished {fullid}, saved to {output_path}")
+        
+        # Clean up
+        K.clear_session()
+        
+        return True
+        
+    except Exception as e:
+        logging.error(f"Worker failed for {fullid}: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        return False
+
+
 class DeepFCDInference:
     """Deep learning-based FCD (Focal Cortical Dysplasia) inference on BIDS datasets."""
 
@@ -687,7 +843,7 @@ class DeepFCDPreprocessor:
             return
 
         # Process images in parallel using the preprocessing derivatives directory
-        # Use max_workers=1 to avoid confusion with multiple parallel processes
+        # Use configurable number of workers for CPU-based parallel preprocessing
         process_map(
             partial(
                 preprocess_image,
@@ -699,7 +855,7 @@ class DeepFCDPreprocessor:
             fullids,
             t1w_paths,
             flair_paths,
-            max_workers=4,
+            max_workers=self.inference.args.preproc_workers,
         )
 
 
@@ -824,6 +980,23 @@ class DeepFCDProcessor:
         """
         self.inference = inference_processor
         self.model_handler = model_handler
+        
+    def _parse_gpu_devices(self) -> List[str]:
+        """Parse GPU device specifications from args.
+        
+        Returns:
+            List of GPU device strings (e.g., ['cuda:0', 'cuda:1']) or ['cpu']
+        """
+        device_arg = self.inference.args.device
+        
+        # Check if multiple devices specified (comma-separated)
+        if ',' in device_arg:
+            devices = [d.strip() for d in device_arg.split(',')]
+            logging.info(f"Multi-GPU mode enabled with devices: {devices}")
+            return devices
+        else:
+            # Single device
+            return [device_arg]
 
     def _normalize_session(self, session_id: Optional[str]) -> Optional[str]:
         """Normalize session identifier values coming from pybids or user input.
@@ -910,6 +1083,24 @@ class DeepFCDProcessor:
                     fullid = f"sub-{subject}"
                 processing_items.append((subject, session, fullid))
 
+        # Determine if we should use parallel processing
+        gpu_devices = self._parse_gpu_devices()
+        num_workers = self.inference.args.inference_workers
+        
+        # Check if multi-GPU parallel processing is requested
+        if num_workers > 1 or len(gpu_devices) > 1:
+            logging.info(f"Parallel inference enabled: {num_workers} workers, {len(gpu_devices)} GPU(s)")
+            self._process_subjects_parallel(processing_items, gpu_devices, num_workers)
+        else:
+            logging.info("Sequential inference mode (single worker)")
+            self._process_subjects_sequential(processing_items)
+
+    def _process_subjects_sequential(self, processing_items: List[Tuple]):
+        """Process subjects sequentially (original behavior).
+        
+        Args:
+            processing_items: List of (subject_id, session_id, fullid) tuples
+        """
         # Process each subject-session combination with progress bar
         for subject_id, session_id, fullid in tqdm(
             processing_items,
@@ -927,6 +1118,67 @@ class DeepFCDProcessor:
                 subject_id, session_id, fullid, test_model, transform_img
             )
             logging.info(f"Inference finished for {fullid}")
+    
+    def _process_subjects_parallel(self, processing_items: List[Tuple], gpu_devices: List[str], num_workers: int):
+        """Process subjects in parallel across multiple GPUs.
+        
+        Args:
+            processing_items: List of (subject_id, session_id, fullid) tuples
+            gpu_devices: List of GPU device strings
+            num_workers: Number of parallel workers
+        """
+        from multiprocessing import Pool, set_start_method
+        import os
+        
+        # Ensure we use 'spawn' for multiprocessing to avoid CUDA context issues
+        try:
+            set_start_method('spawn', force=True)
+        except RuntimeError:
+            pass  # Already set
+        
+        # Determine actual number of workers (min of requested and available GPUs)
+        if gpu_devices[0].startswith('cuda'):
+            actual_workers = min(num_workers, len(gpu_devices))
+        else:
+            actual_workers = num_workers
+            
+        logging.info(f"Starting {actual_workers} parallel workers for {len(processing_items)} subjects")
+        
+        # Create worker arguments - assign GPU to each subject
+        worker_args = []
+        for idx, (subject_id, session_id, fullid) in enumerate(processing_items):
+            # Cycle through available GPUs
+            if gpu_devices[0].startswith('cuda'):
+                assigned_gpu = gpu_devices[idx % len(gpu_devices)]
+            else:
+                assigned_gpu = 'cpu'
+            
+            worker_args.append((
+                subject_id,
+                session_id, 
+                fullid,
+                assigned_gpu,
+                self.inference.args.bids_root,
+                self.inference.args.derivatives if hasattr(self.inference.args, 'derivatives') else None,
+                self.inference.preproc_outdir,
+                self.inference.outdir,
+                self.inference.args.model,
+                self.inference.args,
+            ))
+        
+        # Process in parallel with progress bar
+        with Pool(processes=actual_workers) as pool:
+            results = list(tqdm(
+                pool.imap(_parallel_inference_worker, worker_args),
+                total=len(worker_args),
+                desc="serving predictions using the trained model (parallel)",
+                colour="green",
+            ))
+        
+        # Log summary
+        successful = sum(1 for r in results if r)
+        failed = len(results) - successful
+        logging.info(f"Parallel inference completed: {successful} successful, {failed} failed")
 
     def _process_single_subject(
         self,
@@ -1648,7 +1900,7 @@ def create_argument_parser() -> argparse.ArgumentParser:
         help="Overwrite existing preprocessing outputs",
     )
     parser.add_argument(
-        "-dev", "--device", default="cpu", help="Device to use (cpu or cuda)"
+        "-dev", "--device", default="cpu", help="Device to use (cpu or cuda). For multi-GPU, use comma-separated list like 'cuda:0,cuda:1,cuda:2'"
     )
     parser.add_argument(
         "-s",
@@ -1662,6 +1914,18 @@ def create_argument_parser() -> argparse.ArgumentParser:
         action="store_true",
         default=False,
         help="Enable debug logging output",
+    )
+    parser.add_argument(
+        "--preproc-workers",
+        type=int,
+        default=1,
+        help="Number of parallel workers for preprocessing (default: 4)",
+    )
+    parser.add_argument(
+        "--inference-workers",
+        type=int,
+        default=1,
+        help="Number of parallel workers for inference. Use >1 for multi-GPU parallelization (default: 1)",
     )
 
     return parser

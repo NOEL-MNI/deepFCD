@@ -29,7 +29,8 @@ deepFCD is an automated deep learning tool for detecting focal cortical dysplasi
 ### Key Features
 - **BIDS-compliant**: Native support for BIDS datasets
 - **Dual CNN architecture**: Two-stage detection for improved accuracy
-- **Automatic preprocessing**: Brain extraction, registration, bias correction
+- **Multi-GPU support**: Parallel processing across multiple GPUs
+- **Automatic preprocessing**: Brain extraction, registration, bias correction with CPU parallelization
 - **Uncertainty estimation**: Provides confidence metrics with predictions
 - **Multicenter validated**: Tested across multiple clinical sites
 
@@ -247,6 +248,23 @@ docker run --rm -it --init \
         --subjects sub-001 sub-002_ses-01 sub-003
 ```
 
+#### Multi-GPU parallel inference
+```bash
+docker run --rm -it --init \
+    --gpus=all \
+    --user="$(id -u):$(id -g)" \
+    --volume="/path/to/bids_root:/data" \
+    noelmni/deep-fcd:bids-dev \
+    python /app/inference_bids.py \
+        --bidspath /data \
+        --space MNI152NLin2009aSym \
+        --device cuda0,cuda1,cuda2 \
+        --inference-workers 3 \
+        --preproc-workers 8 \
+        --preprocess \
+        --brainmask
+```
+
 #### CPU-only mode
 ```bash
 docker run --rm -it --init \
@@ -267,6 +285,45 @@ docker run --rm -it --init \
 - `--user="$(id -u):$(id -g)"`: Run as current user to avoid permission issues
 - `--volume="/path/to/bids_root:/data"`: Mount your BIDS dataset (change `/path/to/bids_root` to your actual path)
 - `--env OMP_NUM_THREADS=8`: Set number of CPU threads (CPU mode only)
+
+### Performance Optimization
+
+#### Multi-GPU Inference
+deepFCD supports parallel inference across multiple GPUs for faster processing. Subjects are distributed in round-robin fashion across available GPUs.
+
+**Example: Using 3 GPUs in parallel**
+```bash
+docker run --rm -it --init \
+    --gpus=all \
+    --user="$(id -u):$(id -g)" \
+    --volume="/path/to/bids_root:/data" \
+    noelmni/deep-fcd:bids-dev \
+    python /app/inference_bids.py \
+        --bidspath /data \
+        --device cuda0,cuda1,cuda2 \
+        --inference-workers 3
+```
+
+Each GPU processes subjects independently, significantly improving throughput for large datasets.
+
+#### CPU Parallelization
+Preprocessing uses CPU parallelization automatically to speed up brain extraction and registration:
+
+**Example: Using 16 CPU cores for preprocessing**
+```bash
+docker run --rm -it --init \
+    --gpus=all \
+    --user="$(id -u):$(id -g)" \
+    --volume="/path/to/bids_root:/data" \
+    noelmni/deep-fcd:bids-dev \
+    python /app/inference_bids.py \
+        --bidspath /data \
+        --preprocess \
+        --brainmask \
+        --preproc-workers 16
+```
+
+See [docs/multi_gpu_parallel_inference.md](docs/multi_gpu_parallel_inference.md) for detailed information on parallelization, performance tuning, and best practices.
 
 ### Native Python Inference
 
@@ -311,8 +368,10 @@ python app/inference_bids.py \
 | `--preprocess` | `-pp` | Enable preprocessing (registration + bias correction) | `False` |
 | `--overwrite` | `-o` | Overwrite existing predictions | `False` |
 | `--overwrite-pp` | | Overwrite existing preprocessing outputs | `False` |
-| `--device` | `-dev` | Device to use: `cpu` or `cuda0` | `cpu` |
+| `--device` | `-dev` | Device(s) to use: `cpu`, `cuda0`, or `cuda0,cuda1,cuda2` | `cpu` |
 | `--subjects` | `-s` | List of subjects/sessions to process | All subjects |
+| `--preproc-workers` | | Number of CPU workers for preprocessing | `4` |
+| `--inference-workers` | | Number of GPU workers for inference | `1` |
 | `--debug` | | Enable debug logging | `False` |
 
 ### Examples
@@ -372,7 +431,29 @@ docker run --rm -it --init \
 
 This re-runs both preprocessing and inference even if outputs exist.
 
-#### Example 4: Native Python - Process with GPU (CUDA ≤ 12.2 only)
+#### Example 4: Docker - Multi-GPU processing of large dataset
+```bash
+docker run --rm -it --init \
+    --gpus=all \
+    --user="$(id -u):$(id -g)" \
+    --volume="/data/large_study:/data" \
+    noelmni/deep-fcd:bids-dev \
+    python /app/inference_bids.py \
+        --bidspath /data \
+        --space MNI152NLin2009aSym \
+        --device cuda0,cuda1,cuda2,cuda3 \
+        --inference-workers 4 \
+        --preproc-workers 16 \
+        --preprocess \
+        --brainmask
+```
+
+This will:
+- Use 16 CPU cores for preprocessing
+- Distribute inference across 4 GPUs
+- Process subjects in parallel for maximum throughput
+
+#### Example 5: Native Python - Process with GPU (CUDA ≤ 12.2 only)
 ```bash
 conda activate deepFCD
 python app/inference_bids.py \
@@ -391,6 +472,7 @@ Comprehensive documentation is available in the `docs/` directory:
 
 - **[Input Requirements](docs/input_requirements.md)** - BIDS input specifications, file formats, and preprocessing requirements
 - **[BIDS Derivatives Structure](docs/bids_derivatives_structure.md)** - Output directory structure and file naming conventions
+- **[Multi-GPU Parallel Inference](docs/multi_gpu_parallel_inference.md)** - Performance optimization and parallelization guide
 - **[Dynamic Metadata Generation](docs/dynamic_metadata_generation.md)** - BIDS metadata JSON sidecar generation
 - **[Reporting](docs/reporting.md)** - Output visualization and interpretation
 
@@ -404,9 +486,19 @@ If you see errors about missing `*_space-MNI152_*_brain.nii.gz` files:
 
 ### GPU out of memory
 If you encounter GPU memory errors:
-1. Monitor GPU memory with `nvidia-smi`
-2. Process subjects in smaller batches
-3. Consider using CPU if GPU memory is insufficient
+1. Reduce the number of `--inference-workers`
+2. Monitor GPU memory with `nvidia-smi`
+3. Process subjects in smaller batches using `--subjects`
+4. Consider using CPU if GPU memory is insufficient
+
+### Performance tuning
+For optimal performance:
+- **Single GPU**: Use `--device cuda0 --inference-workers 1`
+- **Multi-GPU**: Use `--device cuda0,cuda1,cuda2 --inference-workers 3`
+- **CPU cores**: Set `--preproc-workers` to number of available CPU cores
+- **Large datasets**: Enable parallel processing for both preprocessing and inference
+
+See the [Multi-GPU documentation](docs/multi_gpu_parallel_inference.md) for detailed performance tuning guidance.
 
 ## Citation
 
