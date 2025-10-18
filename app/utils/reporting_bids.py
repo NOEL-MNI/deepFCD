@@ -30,7 +30,7 @@ parser = argparse.ArgumentParser(description='Rank clusters based on probability
 parser.add_argument('subject_id', help='Subject ID (e.g., sub-PX034 or PX034)')
 parser.add_argument('derivatives_dir', help='Path to BIDS derivatives directory (e.g., /path/to/bids/derivatives/deepFCD)')
 parser.add_argument('--session', help='Session ID (e.g., ses-01 or 01)')
-parser.add_argument('--space', default='orig', help='Space to use for analysis (default: orig, can be MNI152)')
+parser.add_argument('--space', default='MNI152', help='Space to use for analysis (default: orig, can be MNI152)')
 parser.add_argument('--p_thr', '--prob_thr', type=float, default=0.7, help='Probability threshold (default: 0.7)')
 parser.add_argument('--c_thr', '--clus_thr', type=int, default=300, help='Cluster size threshold (default: 300)')
 
