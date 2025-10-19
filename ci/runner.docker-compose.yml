@@ -9,7 +9,7 @@ services:
       dockerfile: runner.Dockerfile
       args:
         BASE_IMAGE_TAG: 12.2.2-cudnn8-devel-ubuntu22.04
-        RUNNER_VERSION: '2.328.0'
+        RUNNER_VERSION: '2.329.0'
     deploy:
       resources:
         reservations:
