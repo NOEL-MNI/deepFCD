@@ -170,7 +170,7 @@ prune:
 
 # build runner
 runner-build:
-    DOCKER_BUILDKIT=1 docker-compose -f ci/runner.docker-compose.yml build
+    DOCKER_BUILDKIT=0 docker-compose -f ci/runner.docker-compose.yml build
 
 # show runner processes
 runner-ps:
