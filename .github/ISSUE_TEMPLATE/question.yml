@@ -1,0 +1,69 @@
+name: Question or Help
+description: Ask a question about using deepFCD
+title: "[Question]: "
+labels: ["question", "triage"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for your question! Before submitting, please check:
+        - [Documentation](https://github.com/NOEL-MNI/deepFCD/blob/main/README.md)
+        - [Existing Issues](https://github.com/NOEL-MNI/deepFCD/issues)
+        - [Discussions](https://github.com/NOEL-MNI/deepFCD/discussions)
+
+  - type: textarea
+    id: question
+    attributes:
+      label: Question
+      description: What would you like to know?
+      placeholder: How do I...
+    validations:
+      required: true
+
+  - type: dropdown
+    id: topic
+    attributes:
+      label: Topic
+      description: What is your question about?
+      options:
+        - Installation & Setup
+        - Data Preparation
+        - Preprocessing
+        - Running Inference
+        - Interpreting Results
+        - Performance & Optimization
+        - Docker Usage
+        - GPU/CUDA Configuration
+        - Reporting & Visualization
+        - Other
+    validations:
+      required: true
+
+  - type: textarea
+    id: attempted
+    attributes:
+      label: What I've Tried
+      description: What have you already tried? Include any commands or configurations you've attempted.
+      placeholder: |
+        I tried running:
+        ```bash
+        ./app/inference.py --help
+        ```
+
+  - type: textarea
+    id: context
+    attributes:
+      label: Additional Context
+      description: Any other relevant information (OS, environment, dataset characteristics, etc.)
+      placeholder: I'm using Ubuntu 22.04 with a dataset containing 50 cases...
+
+  - type: textarea
+    id: environment
+    attributes:
+      label: Environment
+      description: What environment are you using? (Optional but helpful)
+      placeholder: |
+        - Version: v1.2.0
+        - Environment: Docker / Conda / Native
+        - OS: Ubuntu 22.04
+        - Device: GPU (NVIDIA RTX 3090) / CPU
