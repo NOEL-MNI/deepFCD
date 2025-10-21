@@ -1,0 +1,151 @@
+name: Bug Report
+description: Report a bug or unexpected behavior in deepFCD
+title: "[Bug]: "
+labels: ["bug", "triage"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for taking the time to report a bug! Please fill out the information below to help us diagnose and fix the issue.
+
+  - type: textarea
+    id: description
+    attributes:
+      label: Description
+      description: Provide a detailed description of the issue and why you consider it to be a bug. Include the actual command executed on the command line.
+      placeholder: |
+        Example:
+        When running inference on my dataset, the pipeline crashes with a segmentation fault.
+        
+        Command executed:
+        ```bash
+        ./app/inference.py CASE_ID t1.nii.gz flair.nii.gz /output cuda0 1 1
+        ```
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected Behavior
+      description: What should happen?
+      placeholder: The inference should complete successfully and generate prediction outputs.
+    validations:
+      required: true
+
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual Behavior
+      description: What actually happens instead?
+      placeholder: |
+        The process crashes with:
+        ```
+        Segmentation fault (core dumped)
+        ```
+    validations:
+      required: true
+
+  - type: textarea
+    id: reproduce
+    attributes:
+      label: Steps to Reproduce
+      description: Provide an unambiguous set of steps to reproduce this bug
+      placeholder: |
+        1. Prepare T1 and FLAIR images
+        2. Run: ./app/inference.py CASE_ID t1.nii.gz flair.nii.gz /output cuda0 1 1
+        3. Wait for preprocessing to complete
+        4. Observe crash during inference stage
+    validations:
+      required: true
+
+  - type: textarea
+    id: possible-fix
+    attributes:
+      label: Possible Fix
+      description: Not obligatory, but suggest a fix or reason for the bug if you have one
+      placeholder: This might be related to CUDA memory allocation...
+
+  - type: input
+    id: version
+    attributes:
+      label: Version
+      description: What version of deepFCD are you using?
+      placeholder: "v1.2.0 or commit hash: abc1234"
+    validations:
+      required: true
+
+  - type: dropdown
+    id: environment
+    attributes:
+      label: Environment
+      description: How are you running deepFCD?
+      options:
+        - Docker image (noelmni/deep-fcd)
+        - Conda/Mamba environment
+        - Native Python installation
+        - Other (please specify in details)
+    validations:
+      required: true
+
+  - type: input
+    id: environment-details
+    attributes:
+      label: Environment Details
+      description: Provide specific version information
+      placeholder: "Docker tag: v1.2.0, or Conda Python 3.8.0, or macOS 14.2.1"
+
+  - type: dropdown
+    id: device
+    attributes:
+      label: Device
+      description: Are you using GPU or CPU?
+      options:
+        - GPU (CUDA)
+        - GPU (ROCm/AMD)
+        - CPU
+    validations:
+      required: true
+
+  - type: input
+    id: hardware
+    attributes:
+      label: Hardware Specifications
+      description: Provide hardware details (CPU, RAM, GPU model and VRAM)
+      placeholder: "4 vCPUs, 16GB RAM, NVIDIA TITAN RTX 24GB VRAM"
+
+  - type: input
+    id: os
+    attributes:
+      label: Operating System
+      description: What OS are you running on?
+      placeholder: "Ubuntu 22.04 LTS, macOS 14.2.1, Windows 11"
+    validations:
+      required: true
+
+  - type: dropdown
+    id: os-type
+    attributes:
+      label: OS Installation Type
+      description: Is the OS running on baremetal or virtualized?
+      options:
+        - Baremetal
+        - Virtual Machine
+        - WSL2
+        - Docker container
+        - Cloud instance (AWS/GCP/Azure)
+
+  - type: textarea
+    id: context
+    attributes:
+      label: Additional Context
+      description: How has this bug affected you? What were you trying to accomplish? Any other relevant information.
+      placeholder: I was trying to process a dataset for FCD detection...
+
+  - type: textarea
+    id: logs
+    attributes:
+      label: Relevant Log Output
+      description: Please copy and paste any relevant log output. This will be automatically formatted into code.
+      render: shell
+    
