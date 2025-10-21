@@ -116,6 +116,6 @@ jobs:
           labels: ${{ steps.ci_meta.outputs.labels }}
           build-args: |
             BASE_IMAGE_TAG=12.2.2-cudnn8-devel-ubuntu22.04
-            RUNNER_VERSION=2.328.0
+            RUNNER_VERSION=2.329.0
           cache-from: type=gha
           cache-to: type=gha,mode=max

@@ -119,9 +119,33 @@ test-pipeline-native_testing CASE_ID="sub-00055":
     CI_TESTING_PRED_DIR={{ PRED_DIR }} \
     bash ./tests/run_tests.sh
 
-# test reporting
-test-reporting:
-    ./app/utils/reporting.py {{ CASE_ID }} {{ TMPDIR }}/
+# test reporting (BIDS-compliant) - default output to derivatives/deepFCD-reporting/
+test-reporting BIDSPATH="/local_raid/data/ravnoor/sandbox/deepFCD/testBIDS" SUBJECT="sub-PX034" SESSION="ses-03":
+    python3 ./app/utils/reporting_bids.py {{ SUBJECT }} {{ BIDSPATH }}/derivatives/deepFCD --session {{ SESSION }} --p_thr 0.8 --c_thr 500
+
+# test reporting with in-place output (saves alongside predictions)
+test-reporting-inplace BIDSPATH="/local_raid/data/ravnoor/sandbox/deepFCD/testBIDS" SUBJECT="sub-PX034" SESSION="ses-03":
+    python3 ./app/utils/reporting_bids.py {{ SUBJECT }} {{ BIDSPATH }}/derivatives/deepFCD --session {{ SESSION }} --p_thr 0.8 --c_thr 500 --in-place
+
+# test reporting with custom output directory
+test-reporting-custom BIDSPATH="/local_raid/data/ravnoor/sandbox/deepFCD/testBIDS" SUBJECT="sub-PX034" SESSION="ses-03" OUTDIR="/tmp/custom_reports":
+    python3 ./app/utils/reporting_bids.py {{ SUBJECT }} {{ BIDSPATH }}/derivatives/deepFCD --session {{ SESSION }} --p_thr 0.8 --c_thr 500 --in-place {{ OUTDIR }}
+
+# run reporting unit tests
+test-reporting-unit:
+    cd tests/reporting && pytest test_reporting_bids.py -v
+
+# run reporting integration tests
+test-reporting-integration:
+    cd tests/reporting && pytest test_reporting_bids_integration.py -v
+
+# run all reporting tests
+test-reporting-all:
+    cd tests/reporting && pytest test_reporting_bids*.py -v --tb=short
+
+# run reporting tests with coverage
+test-reporting-coverage:
+    cd tests/reporting && pytest test_reporting_bids*.py --cov=reporting_bids --cov-report=html --cov-report=term
 
 # install Jupyter kernel
 install-jupyter-kernel:
