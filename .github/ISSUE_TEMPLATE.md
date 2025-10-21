@@ -1,7 +1,7 @@
 <!--- Provide a general summary of the issue in the Title above -->
 
 ## Description
-<!--- Provide a more detailed introduction to the issue itself, and why you consider it to be a bug. Add the actual command exexuted on the command line -->
+<!--- Provide a more detailed introduction to the issue itself, and why you consider it to be a bug. Add the actual command executed on the command line -->
 
 ## Expected Behavior
 <!--- Tell us what should happen -->
